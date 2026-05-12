@@ -5,7 +5,7 @@ import logoImg from '../assets/jake-logo.png';
 const year = new Date().getFullYear();
 ---
 
-<footer class="w-full max-w-[640px] mx-auto px-6 py-10 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+<footer class="w-full max-w-[640px] mx-auto px-[var(--section-x)] py-10 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
   <div class="flex items-center gap-3">
     <Image
       src={logoImg}
@@ -13,17 +13,17 @@ const year = new Date().getFullYear();
       width={32}
       height={32}
       loading="lazy"
-      class="rounded-sm"
+      class="rounded-sm opacity-70"
     />
-    <span class="font-sans text-sm text-gray-500">
+    <span class="font-sans text-sm text-gray-400">
       &copy; {year} Jake Hartson. Orange County, CA.
     </span>
   </div>
-  <p class="font-sans text-sm text-gray-500">
+  <p class="font-sans text-sm text-gray-400">
     Not a texter?{' '}
     <a
       href="mailto:jake@jakehartson.com"
-      class="underline decoration-honey underline-offset-2 hover:text-honey-dark transition-colors"
+      class="link-inline"
     >
       jake@jakehartson.com
     </a>
