@@ -38,8 +38,8 @@ h1, h2, h3 {
 @layer utilities {
   /* Fluid type scale — 1.333 ratio anchored at 16px base */
   .type-display {
-    font-size: clamp(1.875rem, 5vw, 2.625rem);
-    line-height: 1.2;
+    font-size: clamp(1.375rem, 3vw, 1.875rem);
+    line-height: 1.25;
   }
   .type-h2 {
     font-size: clamp(1.375rem, 3vw, 1.75rem);
