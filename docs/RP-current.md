@@ -1,16 +1,16 @@
-# RP: jakehartson.com v1 (initial build)
+# RP: jakehartson.com v2 (design pass)
 
 **Status:** Complete
 **Run date:** 2026-05-12
-**Notion page:** https://www.notion.so/c127a81d2c9c481d9fe96baaa739fae9
+**Notion page:** https://www.notion.so/762589700d2144518ef7401e186834e3
 
 ## Objective
 
-Build and ship jakehartson.com v1: a one-page personal landing site positioning Jake Hartson as Orange County's "workplace faith" guy. Available, not busy. Phone number on the page. Photo above the fold. Ship target: May 31.
+One opinionated design pass. No copy changes. No structural changes. Tighten visual hierarchy, spacing, typography, photo treatment, and CTA styling.
 
 ## Stack
 
-Astro 4.x + Tailwind 3.x (Note: built with Astro 6.x + Tailwind 4.x, latest stable). Netlify deploy from GitHub main.
+Astro 6.x + Tailwind 4.x. Netlify auto-deploy from GitHub main.
 
 ## Section order
 
@@ -22,25 +22,22 @@ Astro 4.x + Tailwind 3.x (Note: built with Astro 6.x + Tailwind 4.x, latest stab
 6. Writing, start here
 7. Footer
 
-## Key decisions
+## Key design system (v2)
 
-- Accent: #FBBF24 (Tailwind amber-400). Logo is grayscale, no yellow to sample, starter hex used.
-- Typography: Fraunces Variable (serif) + Inter Variable (sans). Self-hosted via Fontsource.
-- CTAs: Text primary (sms:+18582912054), Call secondary (tel:+18582912054).
-- Hero photo: profile_Main.jpg, eager-loaded.
-- Family photo: BBM_4977.jpg, lazy-loaded in About.
-- Logo: Jake Logo_v1.png, footer mark.
-- Favicon: J-on-yellow (#FBBF24) generated programmatically (logo has CRC errors, unreadable at small sizes).
+- **Type scale:** `.type-display` clamp(1.875rem, 5vw, 2.625rem) | `.type-h2` clamp(1.375rem, 3vw, 1.75rem) | `.type-h3` clamp(1.0625rem, 2vw, 1.25rem)
+- **Spacing:** `--section-y: clamp(3rem, 6vw, 4.5rem)` | `--section-x: 1.5rem`
+- **Yellow accent (4 contexts only):** primary CTA bg, link underlines (`.link-inline`), Hero eyebrow text, focus rings
+- **Photos:** `rounded-2xl + shadow-md` on both hero and family photo
+- **Focus:** Universal `:focus-visible` outline in honey, 2px, offset 3px
+- **Line length:** `.prose-body` = `max-width: 65ch` on body paragraphs
 
 ## Post-Build Log
 
 | Field | Notes |
 |---|---|
 | Session date | 2026-05-12 |
-| Status | Complete (Partial: DNS/HTTPS not yet wired, Lighthouse run pending) |
-| What shipped | Full 7-section Astro site built, all copy verbatim from Blueprint, assets from Drive, OG image, favicon set, GitHub repo, Netlify site connected |
-| What's left | Domain DNS wiring (jakehartson.com -> Netlify), Lighthouse verification on live URL |
-| Next session needed? | Yes (DNS + Lighthouse) |
-| Issues | Astro 6 + Tailwind 4 used instead of 4.x + 3.x (latest stable, all requirements met). Logo PNG has CRC errors (unreadable in PIL/ImageMagick), J-on-yellow favicon used as fallback. tailwind.config.cjs not generated (Tailwind 4 uses CSS @theme blocks). |
-| Deployed URL | Pending custom domain. Netlify preview URL assigned after connect. |
-| Lighthouse scores | Pending live URL |
+| Status | Complete |
+| What shipped | Fluid type scale, CSS spacing vars, unified link utility, photo shadows, focus rings, 65ch body cap, yellow trimmed to 4 contexts |
+| What's left | DNS wiring (Jake) + Lighthouse verification (pending custom domain) |
+| Issues | None |
+| Deployed URL | https://jakehartson-site.netlify.app |
