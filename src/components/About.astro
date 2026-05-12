@@ -1,0 +1,25 @@
+---
+import { Image } from 'astro:assets';
+import familyPhoto from '../assets/jake-family.jpg';
+---
+
+<section class="w-full max-w-[640px] mx-auto px-6 py-12 border-t border-gray-200">
+  <h2 class="font-serif text-2xl mb-6 text-near-black">About</h2>
+  <p class="font-sans text-base leading-relaxed text-near-black mb-4">
+    I'm Jake. I live in Orange County with my wife Kinsey and our four kids. I follow Jesus, and most of what I do flows from one conviction: faith isn't a Sunday compartment, it's how you show up Monday through Friday.
+  </p>
+  <p class="font-sans text-base leading-relaxed text-near-black mb-4">
+    My day job is leading <a href="https://searchnational.org/orange-county" target="_blank" rel="noopener noreferrer" class="underline decoration-honey underline-offset-2 hover:text-honey-dark transition-colors">Search OC</a>, a ministry built around creating safe places for people to ask honest questions about God. I write <a href="https://hkc.beehiiv.com" target="_blank" rel="noopener noreferrer" class="underline decoration-honey underline-offset-2 hover:text-honey-dark transition-colors">Having Killer Conversations</a> every Monday for people who want to get better at talking about faith in real life.
+  </p>
+  <p class="font-sans text-base leading-relaxed text-near-black mb-8">
+    Mostly though, I just like helping people figure this stuff out one conversation at a time. That's why my phone number is on this page.
+  </p>
+  <Image
+    src={familyPhoto}
+    alt="Jake with Kinsey and their four kids."
+    width={600}
+    height={400}
+    loading="lazy"
+    class="w-full rounded-xl object-cover"
+  />
+</section>

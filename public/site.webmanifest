@@ -1,0 +1,11 @@
+{
+  "name": "Jake Hartson",
+  "short_name": "Jake Hartson",
+  "icons": [
+    { "src": "/android-chrome-192x192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/android-chrome-512x512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "theme_color": "#FBBF24",
+  "background_color": "#FAFAF8",
+  "display": "standalone"
+}
