@@ -1,9 +1,9 @@
 @import "tailwindcss";
-@import "@fontsource-variable/fraunces/opsz.css";
+@import "@fontsource-variable/lora/index.css";
 @import "@fontsource-variable/inter/index.css";
 
 @theme {
-  --font-serif: 'Fraunces Variable', Georgia, serif;
+  --font-serif: 'Lora Variable', Georgia, serif;
   --font-sans: 'Inter Variable', system-ui, sans-serif;
 
   --color-honey: #FBBF24;
