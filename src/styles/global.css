@@ -12,6 +12,11 @@
   --color-off-white: #FAFAF8;
 }
 
+:root {
+  --section-y: clamp(3rem, 6vw, 4.5rem);
+  --section-x: 1.5rem;
+}
+
 html {
   font-family: var(--font-sans);
   color: var(--color-near-black);
@@ -21,4 +26,43 @@ html {
 
 h1, h2, h3 {
   font-family: var(--font-serif);
+}
+
+/* Unified focus ring */
+:focus-visible {
+  outline: 2px solid var(--color-honey);
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+@layer utilities {
+  /* Fluid type scale — 1.333 ratio anchored at 16px base */
+  .type-display {
+    font-size: clamp(1.875rem, 5vw, 2.625rem);
+    line-height: 1.2;
+  }
+  .type-h2 {
+    font-size: clamp(1.375rem, 3vw, 1.75rem);
+    line-height: 1.25;
+  }
+  .type-h3 {
+    font-size: clamp(1.0625rem, 2vw, 1.25rem);
+    line-height: 1.35;
+  }
+
+  /* Inline link style — one definition, used everywhere */
+  .link-inline {
+    text-decoration: underline;
+    text-decoration-color: var(--color-honey);
+    text-underline-offset: 0.2em;
+    transition: color 0.15s;
+  }
+  .link-inline:hover {
+    color: var(--color-honey-dark);
+  }
+
+  /* Cap body text line length */
+  .prose-body {
+    max-width: 65ch;
+  }
 }
