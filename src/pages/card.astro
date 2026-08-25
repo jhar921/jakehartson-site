@@ -1,0 +1,78 @@
+---
+import '../styles/global.css';
+import { Image } from 'astro:assets';
+import heroPhoto from '../assets/jake-hero.jpg';
+
+const siteUrl = 'https://jakehartson.com';
+const title = 'Jake Hartson';
+const cardUrl = `${siteUrl}/card`;
+const ogImage = `${siteUrl}/og-image.jpg`;
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{title}</title>
+    <meta name="description" content={title} />
+    <link rel="canonical" href={cardUrl} />
+
+    <meta property="og:type" content="profile" />
+    <meta property="og:url" content={cardUrl} />
+    <meta property="og:title" content={title} />
+    <meta property="og:image" content={ogImage} />
+
+    <meta name="twitter:card" content="summary" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:image" content={ogImage} />
+
+    <meta name="theme-color" content="#FBBF24" />
+    <meta name="apple-mobile-web-app-title" content="Jake Hartson" />
+
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+  </head>
+  <body class="bg-off-white">
+    <main
+      class="min-h-dvh flex flex-col items-center justify-center px-[var(--section-x)] py-10"
+      style="padding-top: max(2.5rem, env(safe-area-inset-top)); padding-bottom: max(2.5rem, env(safe-area-inset-bottom));"
+    >
+      <div class="w-full max-w-[400px] flex flex-col items-center">
+        <Image
+          src={heroPhoto}
+          alt="Jake Hartson"
+          width={320}
+          height={384}
+          loading="eager"
+          fetchpriority="high"
+          class="w-40 h-48 rounded-2xl object-cover object-top shadow-md"
+        />
+
+        <h1 class="font-serif type-display text-near-black text-center mt-6 mb-8">
+          Jake Hartson
+        </h1>
+
+        <div class="w-full flex flex-col gap-3">
+          <a
+            href="/jake-hartson.vcf"
+            download="Jake Hartson.vcf"
+            type="text/vcard"
+            class="inline-flex items-center justify-center w-full min-h-14 bg-honey text-near-black font-sans font-semibold px-6 py-4 rounded-lg text-lg hover:bg-honey-dark transition-colors"
+          >
+            Save to contacts
+          </a>
+          <a
+            href="sms:+18582912054"
+            class="inline-flex items-center justify-center w-full min-h-14 border border-near-black text-near-black font-sans font-semibold px-6 py-4 rounded-lg text-lg hover:bg-near-black hover:text-off-white transition-colors"
+          >
+            Text me
+          </a>
+        </div>
+      </div>
+    </main>
+  </body>
+</html>

@@ -7,3 +7,9 @@
   to = "https://jakehartson.com/:splat"
   status = 301
   force = true
+
+[[headers]]
+  for = "/jake-hartson.vcf"
+  [headers.values]
+    Content-Type = "text/vcard; charset=utf-8"
+    Content-Disposition = "inline; filename=\"Jake Hartson.vcf\""
