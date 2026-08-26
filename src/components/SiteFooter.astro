@@ -5,27 +5,39 @@ import logoImg from '../assets/jake-logo.png';
 const year = new Date().getFullYear();
 ---
 
-<footer class="w-full max-w-[640px] mx-auto px-[var(--section-x)] py-10 border-t border-gray-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-  <div class="flex items-center gap-3">
-    <Image
-      src={logoImg}
-      alt="Jake Hartson logo."
-      width={32}
-      height={32}
-      loading="lazy"
-      class="opacity-70"
-    />
-    <span class="font-sans text-sm text-gray-400">
-      &copy; {year} Jake Hartson. Orange County, CA.
-    </span>
+<footer class="mx-auto w-full max-w-[var(--content-max)] border-t border-line px-[var(--section-x)] py-10">
+  <div class="flex flex-col gap-6 sm:flex-row sm:items-start sm:justify-between">
+    <div class="flex items-center gap-3">
+      <Image
+        src={logoImg}
+        alt=""
+        width={32}
+        height={32}
+        loading="lazy"
+        class="opacity-70"
+      />
+      <div>
+        <p class="font-sans text-sm text-stone">
+          &copy; {year} Jake Hartson. Orange County, CA.
+        </p>
+        <p class="mt-1 font-sans text-sm text-stone">
+          Personal site for marketplace work and introductions.
+        </p>
+      </div>
+    </div>
+    <div class="font-sans text-sm text-stone">
+      <p>
+        <a href="mailto:jake@jakehartson.com" class="link-inline">jake@jakehartson.com</a>
+      </p>
+      <p class="mt-2">
+        Business education:
+        <a href="https://theclaritycompany.com" target="_blank" rel="noopener noreferrer" class="link-inline">
+          The Clarity Company
+        </a>
+      </p>
+      <p class="mt-2">
+        <a href="/card" class="link-inline">Save contact card</a>
+      </p>
+    </div>
   </div>
-  <p class="font-sans text-sm text-gray-400">
-    Not a texter?{' '}
-    <a
-      href="mailto:jake@jakehartson.com"
-      class="link-inline"
-    >
-      jake@jakehartson.com
-    </a>
-  </p>
 </footer>

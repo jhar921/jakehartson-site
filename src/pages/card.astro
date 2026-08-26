@@ -5,6 +5,7 @@ import heroPhoto from '../assets/jake-hero.jpg';
 
 const siteUrl = 'https://jakehartson.com';
 const title = 'Jake Hartson';
+const description = 'Founder and strategist. Orange County.';
 const cardUrl = `${siteUrl}/card`;
 const ogImage = `${siteUrl}/og-image.jpg`;
 ---
@@ -16,19 +17,21 @@ const ogImage = `${siteUrl}/og-image.jpg`;
     <meta name="generator" content={Astro.generator} />
 
     <title>{title}</title>
-    <meta name="description" content={title} />
+    <meta name="description" content={description} />
     <link rel="canonical" href={cardUrl} />
 
     <meta property="og:type" content="profile" />
     <meta property="og:url" content={cardUrl} />
     <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
 
     <meta name="twitter:card" content="summary" />
     <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
 
-    <meta name="theme-color" content="#FBBF24" />
+    <meta name="theme-color" content="#0F766E" />
     <meta name="apple-mobile-web-app-title" content="Jake Hartson" />
 
     <link rel="icon" href="/favicon.ico" sizes="any" />
@@ -36,12 +39,12 @@ const ogImage = `${siteUrl}/og-image.jpg`;
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
   </head>
-  <body class="bg-off-white">
+  <body>
     <main
-      class="min-h-dvh flex flex-col items-center justify-center px-[var(--section-x)] py-10"
+      class="flex min-h-dvh flex-col items-center justify-center px-[var(--section-x)] py-10"
       style="padding-top: max(2.5rem, env(safe-area-inset-top)); padding-bottom: max(2.5rem, env(safe-area-inset-bottom));"
     >
-      <div class="w-full max-w-[400px] flex flex-col items-center">
+      <div class="flex w-full max-w-[400px] flex-col items-center">
         <Image
           src={heroPhoto}
           alt="Jake Hartson"
@@ -49,27 +52,36 @@ const ogImage = `${siteUrl}/og-image.jpg`;
           height={384}
           loading="eager"
           fetchpriority="high"
-          class="w-40 h-48 rounded-2xl object-cover object-top shadow-md"
+          class="h-48 w-40 rounded-xl object-cover object-top"
         />
 
-        <h1 class="font-serif type-display text-near-black text-center mt-6 mb-8">
+        <h1 class="font-display type-display mt-6 mb-2 text-center text-ink">
           Jake Hartson
         </h1>
+        <p class="mb-8 text-center font-sans text-base text-stone">
+          Founder and strategist
+        </p>
 
-        <div class="w-full flex flex-col gap-3">
+        <div class="flex w-full flex-col gap-3">
           <a
             href="/jake-hartson.vcf"
             download="Jake Hartson.vcf"
             type="text/vcard"
-            class="inline-flex items-center justify-center w-full min-h-14 bg-honey text-near-black font-sans font-semibold px-6 py-4 rounded-lg text-lg hover:bg-honey-dark transition-colors"
+            class="btn-primary w-full min-h-14 text-lg"
           >
             Save to contacts
           </a>
           <a
             href="sms:+18582912054"
-            class="inline-flex items-center justify-center w-full min-h-14 border border-near-black text-near-black font-sans font-semibold px-6 py-4 rounded-lg text-lg hover:bg-near-black hover:text-off-white transition-colors"
+            class="btn-secondary w-full min-h-14 border-ink text-lg text-ink hover:bg-ink hover:text-paper"
           >
             Text me
+          </a>
+          <a
+            href="mailto:jake@jakehartson.com"
+            class="btn-secondary w-full min-h-14 border-ink text-lg text-ink hover:bg-ink hover:text-paper"
+          >
+            Email
           </a>
         </div>
       </div>

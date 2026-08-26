@@ -1,0 +1,18 @@
+---
+const credentials = [
+  'USC Marshall MBV',
+  'U.S. Army officer',
+  'Strategy & OD',
+  'Orange County',
+];
+---
+
+<section class="w-full border-b border-line/80 bg-fog/40" aria-label="Credentials">
+  <div class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-8 gap-y-3 px-[var(--section-x)] py-5">
+    {credentials.map((item) => (
+      <p class="font-sans text-sm tracking-wide text-stone sm:text-[0.95rem]">
+        {item}
+      </p>
+    ))}
+  </div>
+</section>
