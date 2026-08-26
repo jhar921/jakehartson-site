@@ -1,6 +1,6 @@
 # jakehartson.com
 
-Personal landing site for Jake Hartson. One page. Astro 6 + Tailwind 4. Deploys to Netlify from `main`.
+Personal landing site for Jake Hartson. One page. Astro 6 + Tailwind 4. Deploys to Vercel from `main`.
 
 ## Stack
 
@@ -26,7 +26,7 @@ Output goes to `dist/`.
 
 ## Deploy
 
-Netlify auto-deploys on push to `main`.
+Vercel auto-deploys on push to `main`.
 
 - Build command: `npm run build`
 - Publish directory: `dist`
@@ -40,7 +40,7 @@ Content and design decisions live in Notion. When copy or assets change:
 2. Bump the Reference Pack version.
 3. Run the RP in Claude Code (paste the Hand-off Footer).
 4. Claude Code reads the RP, makes changes, pushes to `main`.
-5. Netlify deploys automatically.
+5. Vercel deploys automatically.
 6. Claude Code updates the RP row in Notion (Status, Run Count, Last Run, Last Outcome) and appends a Post-Build Log to the RP page.
 
 ## Docs
