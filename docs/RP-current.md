@@ -30,7 +30,8 @@ Rebuild jakehartson.com as a marketplace founder/consultant portfolio. Remove mi
 | Field | Notes |
 |---|---|
 | Session date | 2026-08-26 |
-| Status | Building |
-| What shipped | Full copy/visual reposition to marketplace portfolio |
-| What's left | Visual QA, PR |
-| Issues | None yet |
+| Status | Complete |
+| What shipped | Full copy/visual reposition to marketplace portfolio; ministry removed; brand guide rewritten |
+| What's left | Merge + Netlify deploy; optional Notion domain-strategy update |
+| Issues | None |
+| PR | https://github.com/jhar921/jakehartson-site/pull/5 |
