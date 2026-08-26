@@ -1,16 +1,17 @@
 ---
 import '../styles/global.css';
 import Hero from '../components/Hero.astro';
-import HowICanHelp from '../components/HowICanHelp.astro';
-import WantToTalk from '../components/WantToTalk.astro';
-import NotReadyToText from '../components/NotReadyToText.astro';
+import Credibility from '../components/Credibility.astro';
+import HowIHelp from '../components/HowIHelp.astro';
+import Experience from '../components/Experience.astro';
 import About from '../components/About.astro';
-import WritingStartHere from '../components/WritingStartHere.astro';
+import Contact from '../components/Contact.astro';
 import SiteFooter from '../components/SiteFooter.astro';
 
 const siteUrl = 'https://jakehartson.com';
-const title = 'Jake Hartson | Faith at work, in Orange County';
-const description = 'I help people live out their faith at work, talk about Jesus with the people they already know, and wrestle with the questions that come up along the way.';
+const title = 'Jake Hartson | Founder and strategist';
+const description =
+  'Jake Hartson is an Orange County founder and strategist. USC Marshall MBV, U.S. Army veteran, and advisor helping operators get clear, decide, and execute.';
 const ogImage = `${siteUrl}/og-image.jpg`;
 ---
 
@@ -22,6 +23,7 @@ const ogImage = `${siteUrl}/og-image.jpg`;
 
     <title>{title}</title>
     <meta name="description" content={description} />
+    <link rel="canonical" href={siteUrl} />
 
     <meta property="og:type" content="website" />
     <meta property="og:url" content={siteUrl} />
@@ -34,22 +36,41 @@ const ogImage = `${siteUrl}/og-image.jpg`;
     <meta name="twitter:description" content={description} />
     <meta name="twitter:image" content={ogImage} />
 
-    <meta name="theme-color" content="#FBBF24" />
+    <meta name="theme-color" content="#0F766E" />
 
     <link rel="icon" href="/favicon.ico" sizes="any" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
   </head>
-  <body class="bg-off-white">
+  <body>
     <main>
       <Hero />
-      <HowICanHelp />
-      <WantToTalk />
-      <NotReadyToText />
+      <Credibility />
+      <HowIHelp />
+      <Experience />
       <About />
-      <WritingStartHere />
+      <Contact />
     </main>
     <SiteFooter />
+    <script>
+      const nodes = document.querySelectorAll('.reveal');
+      if ('IntersectionObserver' in window) {
+        const observer = new IntersectionObserver(
+          (entries) => {
+            for (const entry of entries) {
+              if (entry.isIntersecting) {
+                entry.target.classList.add('is-visible');
+                observer.unobserve(entry.target);
+              }
+            }
+          },
+          { threshold: 0.16, rootMargin: '0px 0px -8% 0px' },
+        );
+        nodes.forEach((node) => observer.observe(node));
+      } else {
+        nodes.forEach((node) => node.classList.add('is-visible'));
+      }
+    </script>
   </body>
 </html>

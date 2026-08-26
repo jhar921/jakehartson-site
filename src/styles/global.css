@@ -1,68 +1,149 @@
 @import "tailwindcss";
-@import "@fontsource-variable/lora/index.css";
-@import "@fontsource-variable/inter/index.css";
+@import "@fontsource-variable/newsreader/index.css";
+@import "@fontsource-variable/source-sans-3/index.css";
 
 @theme {
-  --font-serif: 'Lora Variable', Georgia, serif;
-  --font-sans: 'Inter Variable', system-ui, sans-serif;
+  --font-display: 'Newsreader Variable', Georgia, 'Times New Roman', serif;
+  --font-sans: 'Source Sans 3 Variable', system-ui, sans-serif;
 
-  --color-honey: #FBBF24;
-  --color-honey-dark: #D97706;
-  --color-near-black: #111111;
-  --color-off-white: #FAFAF8;
+  --color-ink: #101412;
+  --color-paper: #F3F5F4;
+  --color-fog: #E4E9E6;
+  --color-stone: #5A635E;
+  --color-line: #C9D1CC;
+  --color-teal: #0F766E;
+  --color-teal-bright: #0D9488;
+  --color-hero-veil: rgba(10, 16, 14, 0.58);
 }
 
 :root {
-  --section-y: clamp(3rem, 6vw, 4.5rem);
-  --section-x: 1.5rem;
+  --section-y: clamp(3.5rem, 8vw, 6rem);
+  --section-x: clamp(1.25rem, 4vw, 2rem);
+  --content-max: 42rem;
 }
 
 html {
   font-family: var(--font-sans);
-  color: var(--color-near-black);
-  background-color: var(--color-off-white);
+  color: var(--color-ink);
+  background-color: var(--color-paper);
   -webkit-font-smoothing: antialiased;
+  scroll-behavior: smooth;
+}
+
+body {
+  background:
+    radial-gradient(120% 80% at 10% -10%, #dfe8e4 0%, transparent 55%),
+    radial-gradient(90% 60% at 100% 0%, #e8eee9 0%, transparent 45%),
+    var(--color-paper);
+  min-height: 100vh;
 }
 
 h1, h2, h3 {
-  font-family: var(--font-serif);
+  font-family: var(--font-display);
+  font-weight: 500;
+  letter-spacing: -0.02em;
 }
 
-/* Unified focus ring */
 :focus-visible {
-  outline: 2px solid var(--color-honey);
+  outline: 2px solid var(--color-teal);
   outline-offset: 3px;
   border-radius: 4px;
 }
 
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
 @layer utilities {
-  /* Fluid type scale, 1.333 ratio anchored at 16px base */
+  .type-brand {
+    font-size: clamp(2.75rem, 8vw, 4.75rem);
+    line-height: 0.95;
+    letter-spacing: -0.03em;
+  }
+
   .type-display {
-    font-size: clamp(1.375rem, 3vw, 1.875rem);
-    line-height: 1.25;
+    font-size: clamp(1.625rem, 3.4vw, 2.25rem);
+    line-height: 1.2;
   }
+
   .type-h2 {
-    font-size: clamp(1.375rem, 3vw, 1.75rem);
-    line-height: 1.25;
+    font-size: clamp(1.5rem, 3vw, 2rem);
+    line-height: 1.2;
   }
+
   .type-h3 {
-    font-size: clamp(1.0625rem, 2vw, 1.25rem);
+    font-size: clamp(1.125rem, 2vw, 1.375rem);
     line-height: 1.35;
   }
 
-  /* Inline link style, one definition, used everywhere */
   .link-inline {
+    color: var(--color-teal);
     text-decoration: underline;
-    text-decoration-color: var(--color-honey);
-    text-underline-offset: 0.2em;
-    transition: color 0.15s;
-  }
-  .link-inline:hover {
-    color: var(--color-honey-dark);
+    text-decoration-color: color-mix(in srgb, var(--color-teal) 45%, transparent);
+    text-underline-offset: 0.18em;
+    transition: color 0.15s ease, text-decoration-color 0.15s ease;
   }
 
-  /* Cap body text line length */
+  .link-inline:hover {
+    color: var(--color-teal-bright);
+    text-decoration-color: var(--color-teal-bright);
+  }
+
   .prose-body {
     max-width: 65ch;
+  }
+
+  .btn-primary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    background: var(--color-teal);
+    color: #f7faf8;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 1rem;
+    transition: background-color 0.15s ease;
+  }
+
+  .btn-primary:hover {
+    background: var(--color-teal-bright);
+  }
+
+  .btn-secondary {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 44px;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    border: 1px solid currentColor;
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 1rem;
+    transition: background-color 0.15s ease, color 0.15s ease;
+  }
+
+  .reveal {
+    opacity: 0;
+    transform: translateY(12px);
+    transition: opacity 0.7s ease, transform 0.7s ease;
+  }
+
+  .reveal.is-visible {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

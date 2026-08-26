@@ -1,0 +1,45 @@
+---
+const items = [
+  {
+    title: 'Strategy consulting practice',
+    detail:
+      'Founded and grew a strategy and people-development practice to six figures. Facilitation, prioritization, leadership development, and operating follow-through for service businesses and mission-driven organizations.',
+  },
+  {
+    title: 'USC Marshall School of Business',
+    detail:
+      'Master of Business for Veterans. Formal training in strategy, ventures, and the responsibility of building and operating a company.',
+  },
+  {
+    title: 'U.S. Army officer',
+    detail:
+      'Infantry leadership and Civil Affairs. Taught planning and organizational resilience under pressure. Comfortable bringing order to messy systems.',
+  },
+  {
+    title: 'Organization development',
+    detail:
+      'Pepperdine MSOD training, Patterson Center strategic planning certification, and GIANT leadership coaching. Pattern recognition across teams, culture, and change.',
+  },
+  {
+    title: 'Operator background',
+    detail:
+      'Nonprofit and enterprise operations across time zones and complex stakeholder environments. Systems, SOPs, workflow modernization, and adoption that sticks.',
+  },
+];
+---
+
+<section class="mx-auto w-full max-w-[var(--content-max)] px-[var(--section-x)] py-[var(--section-y)] reveal">
+  <h2 class="font-display type-h2 mb-4 text-ink">Selected experience</h2>
+  <p class="prose-body mb-10 font-sans text-lg leading-relaxed text-stone">
+    Marketplace credibility built through education, military leadership, consulting delivery, and hands-on operations.
+  </p>
+
+  <ol class="space-y-9">
+    {items.map((item) => (
+      <li class="border-t border-line pt-6">
+        <h3 class="font-display type-h3 mb-2 text-ink">{item.title}</h3>
+        <p class="prose-body font-sans text-base leading-relaxed text-ink">{item.detail}</p>
+      </li>
+    ))}
+  </ol>
+</section>
