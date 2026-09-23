@@ -6,10 +6,10 @@
       "has": [
         {
           "type": "host",
-          "value": "jakehartson.com"
+          "value": "www.jakehartson.com"
         }
       ],
-      "destination": "https://www.jakehartson.com/:path*",
+      "destination": "https://jakehartson.com/:path*",
       "statusCode": 301
     }
   ],
