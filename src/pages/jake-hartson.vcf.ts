@@ -29,7 +29,7 @@ export const GET: APIRoute = async () => {
     'VERSION:3.0',
     'FN:Jake Hartson',
     'N:Hartson;Jake;;;',
-    'TITLE:Founder and Strategist',
+    'TITLE:Strategist and operator',
     'EMAIL;TYPE=INTERNET:jake@jakehartson.com',
     'TEL;TYPE=CELL:+18582912054',
     'URL:https://jakehartson.com',

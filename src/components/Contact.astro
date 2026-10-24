@@ -9,12 +9,12 @@ const PHONE_E164 = '+18582912054';
 const PHONE_DISPLAY = '(858) 291-2054';
 ---
 
-<section id="contact" class="mx-auto w-full max-w-5xl px-[var(--section-x)] pb-[var(--section-y)]" aria-labelledby="contact-heading">
+<section id="contact" class="mx-auto w-full max-w-[var(--content-max)] px-[var(--section-x)] pb-[var(--section-y)]" aria-labelledby="contact-heading">
   <div class="border-t border-line pt-[var(--section-y)]">
     <h2 id="contact-heading" class="font-display type-h2 mb-3 text-ink">Get in touch</h2>
     <p class="mb-8 font-sans text-base leading-relaxed text-stone">I usually respond within a day or two.</p>
 
-    <div class="grid gap-10 md:grid-cols-[minmax(0,1fr)_16rem] md:gap-14">
+    <div class="grid gap-10">
       <div>
         <form
           id="contact-form"
@@ -45,7 +45,9 @@ const PHONE_DISPLAY = '(858) 291-2054';
             <label for="cf-message">Message</label>
             <textarea id="cf-message" name="message" rows="6" maxlength="5000" required></textarea>
           </div>
-          <div class="hp" aria-hidden="true">
+          <!-- Spam trap (honeypot): hidden from visitors and screen readers; the
+               Worker drops any submission that fills it. -->
+          <div class="hp" aria-hidden="true" style="display:none">
             <label for="cf-website">Website</label>
             <input id="cf-website" name="website" type="text" tabindex="-1" autocomplete="off" />
           </div>
@@ -114,11 +116,7 @@ const PHONE_DISPLAY = '(858) 291-2054';
   }
 
   .hp {
-    position: absolute;
-    left: -10000px;
-    width: 1px;
-    height: 1px;
-    overflow: hidden;
+    display: none !important;
   }
 </style>
 
