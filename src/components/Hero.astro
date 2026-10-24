@@ -6,7 +6,7 @@ import { Image } from 'astro:assets';
 import heroPhoto from '../assets/jake-hero.jpg';
 ---
 
-<section class="relative isolate min-h-[100svh] w-full overflow-hidden text-paper">
+<header class="relative isolate min-h-[100svh] w-full overflow-hidden text-paper">
   <div class="absolute inset-0 -z-10">
     <Image
       src={heroPhoto}
@@ -15,6 +15,7 @@ import heroPhoto from '../assets/jake-hero.jpg';
       height={2161}
       widths={[480, 640, 828, 1080, 1280, 1440, 1811]}
       sizes="(max-aspect-ratio: 1811/2161) 84vh, 100vw"
+      quality={62}
       loading="eager"
       fetchpriority="high"
       class="hero-photo h-full w-full object-cover object-[center_18%]"
@@ -25,29 +26,11 @@ import heroPhoto from '../assets/jake-hero.jpg';
 
   <div class="mx-auto flex min-h-[100svh] w-full max-w-6xl flex-col justify-end px-[var(--section-x)] pb-16 pt-28 sm:pb-20 md:justify-center md:pb-24">
     <div class="max-w-xl hero-copy">
-      <h1 class="font-display type-brand mb-5 text-paper">
-        Jake Hartson
-      </h1>
-      <p class="mb-5 font-display type-display text-paper">
-        Founder and strategist for the marketplace.
-      </p>
-      <p class="mb-8 max-w-[38ch] font-sans text-lg leading-relaxed text-fog/95">
-        I help operators get clear, decide, and execute when the next chapter of the business is on the line.
-      </p>
-      <div class="flex flex-col gap-3 sm:flex-row">
-        <a href="#contact" class="btn-primary">
-          Start a conversation
-        </a>
-        <a
-          href="mailto:jake@jakehartson.com"
-          class="btn-secondary border-paper/70 text-paper hover:bg-paper hover:text-ink"
-        >
-          Email Jake
-        </a>
-      </div>
+      <h1 class="font-display type-brand mb-5 text-paper">Jake Hartson.</h1>
+      <p class="font-display type-display text-paper">Strategist and operator in Orange County.</p>
     </div>
   </div>
-</section>
+</header>
 
 <style>
   .hero-photo {

@@ -33,7 +33,6 @@ export const GET: APIRoute = async () => {
     'EMAIL;TYPE=INTERNET:jake@jakehartson.com',
     'TEL;TYPE=CELL:+18582912054',
     'URL:https://jakehartson.com',
-    'NOTE:Orange County founder and strategist. Strategy, operations, and leadership clarity for marketplace operators.',
     foldLine(`PHOTO;ENCODING=b;TYPE=JPEG:${jpeg.toString('base64')}`),
     'END:VCARD',
     '',

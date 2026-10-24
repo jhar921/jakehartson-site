@@ -1,23 +1,215 @@
 ---
+// Approved copy (Doyle Home Copy 2026-10-24, section 4). Word for word.
+// The error line is PROPOSED (the doc marks it optional).
+// The form posts to /api/contact, which the Pages worker hands to the
+// jakehartson-contact Worker (Turnstile check, then email to Jake).
+// Public Turnstile site key (widget "jakehartson.com contact"). Not a secret.
+const TURNSTILE_SITEKEY = '0x4AAAAAAFkeCiYtZakHDDC0';
+const PHONE_E164 = '+18582912054';
+const PHONE_DISPLAY = '(858) 291-2054';
 ---
 
-<section id="contact" class="mx-auto w-full max-w-[var(--content-max)] px-[var(--section-x)] py-[var(--section-y)] reveal">
-  <h2 class="font-display type-h2 mb-4 text-ink">Want to talk?</h2>
-  <p class="prose-body mb-3 font-sans text-base leading-relaxed text-ink">
-    Email is best for a first note. Text or call if you already have context and want a quicker reply. Coffee in Orange County when schedules allow.
-  </p>
-  <p class="prose-body mb-8 font-sans text-base leading-relaxed text-stone">
-    I usually respond within a day or two.
-  </p>
-  <div class="flex flex-col gap-3 sm:flex-row">
-    <a href="mailto:jake@jakehartson.com" class="btn-primary">
-      jake@jakehartson.com
-    </a>
-    <a href="sms:+18582912054" class="btn-secondary border-ink text-ink hover:bg-ink hover:text-paper">
-      Text
-    </a>
-    <a href="tel:+18582912054" class="btn-secondary border-ink text-ink hover:bg-ink hover:text-paper">
-      Call
-    </a>
+<section id="contact" class="mx-auto w-full max-w-5xl px-[var(--section-x)] pb-[var(--section-y)]" aria-labelledby="contact-heading">
+  <div class="border-t border-line pt-[var(--section-y)]">
+    <h2 id="contact-heading" class="font-display type-h2 mb-3 text-ink">Get in touch</h2>
+    <p class="mb-8 font-sans text-base leading-relaxed text-stone">I usually respond within a day or two.</p>
+
+    <div class="grid gap-10 md:grid-cols-[minmax(0,1fr)_16rem] md:gap-14">
+      <div>
+        <form
+          id="contact-form"
+          class="contact-form flex flex-col gap-5"
+          action="/api/contact"
+          method="post"
+          data-sitekey={TURNSTILE_SITEKEY}
+        >
+          <div class="field">
+            <label for="cf-name">Name</label>
+            <input id="cf-name" name="name" type="text" autocomplete="name" maxlength="120" required />
+          </div>
+          <div class="field">
+            <label for="cf-email">Email</label>
+            <input
+              id="cf-email"
+              name="email"
+              type="email"
+              autocomplete="email"
+              autocapitalize="off"
+              autocorrect="off"
+              spellcheck="false"
+              maxlength="254"
+              required
+            />
+          </div>
+          <div class="field">
+            <label for="cf-message">Message</label>
+            <textarea id="cf-message" name="message" rows="6" maxlength="5000" required></textarea>
+          </div>
+          <div class="hp" aria-hidden="true">
+            <label for="cf-website">Website</label>
+            <input id="cf-website" name="website" type="text" tabindex="-1" autocomplete="off" />
+          </div>
+          <div id="contact-turnstile" class="min-h-0"></div>
+          <div>
+            <button type="submit" class="btn-primary min-w-32">Send</button>
+          </div>
+          <p id="contact-error" class="font-sans text-base text-ink" role="alert" hidden>
+            That didn't send. Please try again, or email me at <a href="mailto:jake@jakehartson.com" class="link-inline">jake@jakehartson.com</a>.
+          </p>
+        </form>
+        <p id="contact-sent" class="font-sans text-lg leading-relaxed text-ink" role="status" tabindex="-1" hidden>
+          Thanks. Your message is on its way to me, and I usually respond within a day or two.
+        </p>
+      </div>
+
+      <ul class="flex flex-col gap-4 font-sans text-base leading-relaxed text-ink">
+        <li>Or email <a href="mailto:jake@jakehartson.com" class="link-inline">jake@jakehartson.com</a></li>
+        <li>Text or call <a href={`tel:${PHONE_E164}`} class="link-inline whitespace-nowrap">{PHONE_DISPLAY}</a></li>
+        <li><a href="/card/" class="link-inline">Save my contact card</a></li>
+      </ul>
+    </div>
   </div>
 </section>
+
+<style>
+  .field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+  }
+
+  .field label {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--color-ink);
+  }
+
+  .field input,
+  .field textarea {
+    font: inherit;
+    font-size: 1rem;
+    min-height: 48px;
+    padding: 0.75rem 0.875rem;
+    border: 1px solid #7d8781;
+    border-radius: 0.5rem;
+    background: #fff;
+    color: var(--color-ink);
+  }
+
+  .field textarea {
+    resize: vertical;
+  }
+
+  .field input:focus-visible,
+  .field textarea:focus-visible {
+    outline: 2px solid var(--color-teal);
+    outline-offset: 2px;
+  }
+
+  .field input:user-invalid,
+  .field textarea:user-invalid {
+    border-color: #b42318;
+    border-width: 2px;
+  }
+
+  .hp {
+    position: absolute;
+    left: -10000px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+</style>
+
+<script>
+  const form = document.getElementById('contact-form') as HTMLFormElement | null;
+  const sent = document.getElementById('contact-sent');
+  const error = document.getElementById('contact-error');
+  const slot = document.getElementById('contact-turnstile');
+
+  type Turnstile = {
+    render: (el: HTMLElement, opts: Record<string, unknown>) => string;
+    reset: (id?: string) => void;
+  };
+  const w = window as unknown as { turnstile?: Turnstile; onContactTurnstile?: () => void };
+
+  let widgetId: string | undefined;
+  let token = '';
+  let waiters: Array<(t: string) => void> = [];
+  let loading: Promise<void> | undefined;
+
+  // Turnstile loads on first interaction with the form, so it adds nothing to
+  // the initial page load.
+  function loadTurnstile(): Promise<void> {
+    if (loading) return loading;
+    loading = new Promise((resolve, reject) => {
+      w.onContactTurnstile = () => {
+        widgetId = w.turnstile!.render(slot!, {
+          sitekey: form!.dataset.sitekey,
+          size: 'flexible',
+          appearance: 'interaction-only',
+          callback: (t: string) => {
+            token = t;
+            waiters.forEach((fn) => fn(t));
+            waiters = [];
+          },
+          'expired-callback': () => {
+            token = '';
+          },
+          'error-callback': () => {
+            token = '';
+          },
+        });
+        resolve();
+      };
+      const s = document.createElement('script');
+      s.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit&onload=onContactTurnstile';
+      s.async = true;
+      s.onerror = () => reject(new Error('turnstile'));
+      document.head.append(s);
+    });
+    return loading;
+  }
+
+  function waitForToken(ms = 15000): Promise<string> {
+    if (token) return Promise.resolve(token);
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => reject(new Error('timeout')), ms);
+      waiters.push((t) => {
+        clearTimeout(timer);
+        resolve(t);
+      });
+    });
+  }
+
+  if (form && sent && error && slot) {
+    form.addEventListener('focusin', () => void loadTurnstile().catch(() => {}), { once: true });
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      if (!form.reportValidity()) return;
+      const button = form.querySelector('button[type="submit"]') as HTMLButtonElement;
+      button.disabled = true;
+      error.hidden = true;
+      try {
+        await loadTurnstile();
+        const t = await waitForToken();
+        const body = new FormData(form);
+        body.set('cf-turnstile-response', t);
+        const res = await fetch(form.action, { method: 'POST', body, headers: { accept: 'application/json' } });
+        const data = (await res.json().catch(() => ({}))) as { ok?: boolean };
+        if (!res.ok || !data.ok) throw new Error('send');
+        form.hidden = true;
+        sent.hidden = false;
+        sent.focus();
+      } catch {
+        error.hidden = false;
+        token = '';
+        if (w.turnstile && widgetId) w.turnstile.reset(widgetId);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+</script>

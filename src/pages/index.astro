@@ -1,17 +1,15 @@
 ---
 import '../styles/global.css';
 import Hero from '../components/Hero.astro';
-import Credibility from '../components/Credibility.astro';
-import HowIHelp from '../components/HowIHelp.astro';
-import Experience from '../components/Experience.astro';
-import About from '../components/About.astro';
+import Story from '../components/Story.astro';
+import History from '../components/History.astro';
 import Contact from '../components/Contact.astro';
-import SiteFooter from '../components/SiteFooter.astro';
 
 const siteUrl = 'https://jakehartson.com';
-const title = 'Jake Hartson | Founder and strategist';
+// PROPOSED (Doyle Home Copy 2026-10-24, "Optional: title and description").
+const title = 'Jake Hartson';
 const description =
-  'Jake Hartson is an Orange County founder and strategist. USC Marshall MBV, U.S. Army veteran, and advisor helping operators get clear, decide, and execute.';
+  'Jake Hartson, a strategist and operator in Orange County. A short history and a way to reach him.';
 const ogImage = `${siteUrl}/og-image.jpg`;
 ---
 
@@ -23,10 +21,10 @@ const ogImage = `${siteUrl}/og-image.jpg`;
 
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="canonical" href={siteUrl} />
+    <link rel="canonical" href={`${siteUrl}/`} />
 
     <meta property="og:type" content="website" />
-    <meta property="og:url" content={siteUrl} />
+    <meta property="og:url" content={`${siteUrl}/`} />
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
@@ -42,35 +40,14 @@ const ogImage = `${siteUrl}/og-image.jpg`;
     <link rel="icon" href="/favicon-32.png" sizes="32x32" type="image/png" />
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
+    <link rel="preconnect" href="https://challenges.cloudflare.com" />
   </head>
   <body>
+    <Hero />
     <main>
-      <Hero />
-      <Credibility />
-      <HowIHelp />
-      <Experience />
-      <About />
+      <Story />
+      <History />
       <Contact />
     </main>
-    <SiteFooter />
-    <script>
-      const nodes = document.querySelectorAll('.reveal');
-      if ('IntersectionObserver' in window) {
-        const observer = new IntersectionObserver(
-          (entries) => {
-            for (const entry of entries) {
-              if (entry.isIntersecting) {
-                entry.target.classList.add('is-visible');
-                observer.unobserve(entry.target);
-              }
-            }
-          },
-          { threshold: 0.16, rootMargin: '0px 0px -8% 0px' },
-        );
-        nodes.forEach((node) => observer.observe(node));
-      } else {
-        nodes.forEach((node) => node.classList.add('is-visible'));
-      }
-    </script>
   </body>
 </html>
