@@ -1,4 +1,7 @@
 ---
+// The photo covers the full viewport. On portrait screens it is height-bound,
+// so its rendered width is about 84vh (1811/2161 of the height); otherwise 100vw.
+// srcset lets phones pick a small variant instead of the 1811px original.
 import { Image } from 'astro:assets';
 import heroPhoto from '../assets/jake-hero.jpg';
 ---
@@ -10,6 +13,8 @@ import heroPhoto from '../assets/jake-hero.jpg';
       alt="Jake Hartson outdoor portrait"
       width={1811}
       height={2161}
+      widths={[480, 640, 828, 1080, 1280, 1440, 1811]}
+      sizes="(max-aspect-ratio: 1811/2161) 84vh, 100vw"
       loading="eager"
       fetchpriority="high"
       class="hero-photo h-full w-full object-cover object-[center_18%]"

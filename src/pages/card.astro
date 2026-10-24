@@ -6,7 +6,9 @@ import heroPhoto from '../assets/jake-hero.jpg';
 const siteUrl = 'https://jakehartson.com';
 const title = 'Jake Hartson';
 const description = 'Founder and strategist. Orange County.';
-const cardUrl = `${siteUrl}/card`;
+// Cloudflare Pages serves card/index.html at /card/ (and 308s /card to it),
+// so the canonical must carry the trailing slash.
+const cardUrl = `${siteUrl}/card/`;
 const ogImage = `${siteUrl}/og-image.jpg`;
 ---
 
@@ -48,8 +50,9 @@ const ogImage = `${siteUrl}/og-image.jpg`;
         <Image
           src={heroPhoto}
           alt="Jake Hartson"
-          width={320}
-          height={384}
+          width={160}
+          height={192}
+          densities={[1, 2]}
           loading="eager"
           fetchpriority="high"
           class="h-48 w-40 rounded-xl object-cover object-top"

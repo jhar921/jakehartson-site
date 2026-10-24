@@ -1,0 +1,39 @@
+---
+// Built to dist/404.html. Cloudflare Pages serves this file with a 404 status
+// for any path that does not match a built file, instead of falling back to
+// the homepage with a 200.
+import '../styles/global.css';
+
+const title = 'Page not found | Jake Hartson';
+---
+
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="generator" content={Astro.generator} />
+
+    <title>{title}</title>
+    <meta name="description" content="This page does not exist on jakehartson.com." />
+    <meta name="robots" content="noindex" />
+
+    <meta name="theme-color" content="#0F766E" />
+
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="manifest" href="/site.webmanifest" />
+  </head>
+  <body>
+    <main class="mx-auto flex min-h-dvh w-full max-w-[var(--content-max)] flex-col justify-center px-[var(--section-x)] py-[var(--section-y)]">
+      <p class="mb-4 font-sans text-sm font-semibold uppercase tracking-[0.18em] text-teal">404</p>
+      <h1 class="font-display type-display mb-4 text-ink">This page isn't here.</h1>
+      <p class="prose-body mb-8 font-sans text-base leading-relaxed text-stone">
+        The link may be old or mistyped. Everything on this site starts from the home page.
+      </p>
+      <div>
+        <a href="/" class="btn-primary">Go to jakehartson.com</a>
+      </div>
+    </main>
+  </body>
+</html>
