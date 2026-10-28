@@ -67,7 +67,7 @@ h1, h2, h3 {
 @layer utilities {
   .type-brand {
     font-size: clamp(2.75rem, 8vw, 4.75rem);
-    line-height: 0.95;
+    line-height: 1.05;
     letter-spacing: -0.03em;
   }
 
@@ -87,6 +87,10 @@ h1, h2, h3 {
   }
 
   .link-inline {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 10px 0;
     color: var(--color-teal);
     text-decoration: underline;
     text-decoration-color: color-mix(in srgb, var(--color-teal) 45%, transparent);
