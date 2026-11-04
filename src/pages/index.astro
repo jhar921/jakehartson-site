@@ -41,6 +41,19 @@ const ogImage = `${siteUrl}/og-image.jpg`;
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="manifest" href="/site.webmanifest" />
     <link rel="preconnect" href="https://challenges.cloudflare.com" />
+
+    <script type="application/ld+json" set:html={JSON.stringify({
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "Jake Hartson",
+      "url": `${siteUrl}/`,
+      "image": ogImage,
+      "jobTitle": "Strategist and operator",
+      "homeLocation": {
+        "@type": "Place",
+        "name": "Orange County, CA"
+      }
+    })} />
   </head>
   <body>
     <Hero />
