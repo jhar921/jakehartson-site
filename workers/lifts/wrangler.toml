@@ -1,0 +1,12 @@
+# lifts.jakehartson.com — personal StrongLifts 5×5 tracker (static Worker).
+# Do NOT deploy or attach DNS without Jake's explicit go via Cooper.
+name = "lifts"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = true
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
