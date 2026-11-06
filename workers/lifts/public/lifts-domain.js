@@ -48,9 +48,14 @@ export function isLiftSuccess(entry, target) {
   return entry.sets.every((reps) => typeof reps === "number" && reps >= target.reps);
 }
 
-/** Round to nearest 0.25 lb so 2.5 lb plates stay clean. */
+/** Round to the nearest 0.25 lb (keeps entered weights exact). */
 export function roundWeight(lbs) {
   return Math.round(lbs * 4) / 4;
+}
+
+/** Round down to a loadable 2.5 lb step (used for deloads). */
+export function roundToPlate(lbs) {
+  return Math.floor(lbs / 2.5 + 1e-9) * 2.5;
 }
 
 export function applyCompletedWorkout(store, kind, lifts, completedAt = new Date().toISOString()) {
@@ -68,7 +73,7 @@ export function applyCompletedWorkout(store, kind, lifts, completedAt = new Date
       const failures = (progress[target.lift]?.consecutiveFailures ?? 0) + 1;
       if (failures >= 3) {
         progress[target.lift] = {
-          nextWeight: roundWeight(entry.weight * 0.9),
+          nextWeight: roundToPlate(entry.weight * 0.9),
           consecutiveFailures: 0,
         };
       } else {
@@ -111,6 +116,29 @@ export function ensureDraft(store) {
   return { ...store, draft: { kind, entries } };
 }
 
+function isRepValue(v) {
+  return v === null || (typeof v === "number" && Number.isFinite(v) && v >= 0);
+}
+
+/** A draft is only kept when every entry matches its workout shape; otherwise it is rebuilt. */
+export function isValidDraft(draft) {
+  if (!draft || typeof draft !== "object") return false;
+  if (draft.kind !== "A" && draft.kind !== "B") return false;
+  if (!draft.entries || typeof draft.entries !== "object") return false;
+  return WORKOUTS[draft.kind].every((t) => {
+    const e = draft.entries[t.lift];
+    return (
+      e &&
+      typeof e === "object" &&
+      (e.weight === null || (typeof e.weight === "number" && Number.isFinite(e.weight))) &&
+      Array.isArray(e.sets) &&
+      e.sets.length === t.sets &&
+      e.sets.every(isRepValue) &&
+      (e.notes === undefined || typeof e.notes === "string")
+    );
+  });
+}
+
 export function parseStore(raw) {
   if (!raw || typeof raw !== "object") return null;
   const data = raw;
@@ -133,11 +161,30 @@ export function parseStore(raw) {
       };
     }
   }
+  const sessions = data.sessions.filter(
+    (s) =>
+      s &&
+      typeof s === "object" &&
+      (s.kind === "A" || s.kind === "B") &&
+      Array.isArray(s.lifts) &&
+      s.lifts.every(
+        (l) =>
+          l &&
+          WORKOUTS[s.kind].some((t) => t.lift === l.lift) &&
+          typeof l.weight === "number" &&
+          Number.isFinite(l.weight) &&
+          Array.isArray(l.sets) &&
+          l.sets.every((r) => typeof r === "number" && Number.isFinite(r) && r >= 0) &&
+          (l.notes === undefined || typeof l.notes === "string"),
+      ) &&
+      (s.completedAt === undefined || typeof s.completedAt === "string"),
+  );
+  const draft = isValidDraft(data.draft) ? data.draft : null;
   return {
     version: 1,
-    sessions: data.sessions,
+    sessions,
     progress,
-    draft: data.draft ?? null,
+    draft,
   };
 }
 

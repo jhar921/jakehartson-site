@@ -1,13 +1,18 @@
 /**
  * lifts — static asset Worker for lifts.jakehartson.com (subdomain root).
  * Serves public/ via ASSETS. Noindex. No marketing-site coupling.
- * Deploy + DNS only after Jake's explicit go via Cooper.
+ * Runs first on every request (run_worker_first) so headers attach to all assets.
  */
 const SECURITY = {
   "x-content-type-options": "nosniff",
   "referrer-policy": "no-referrer",
   "x-robots-tag": "noindex, nofollow",
   "permissions-policy": "camera=(), microphone=(), geolocation=()",
+  "x-frame-options": "DENY",
+  "strict-transport-security": "max-age=31536000",
+  // Inline scripts in index.html are allowed by hash; update hashes if they change.
+  "content-security-policy":
+    "default-src 'none'; script-src 'self' 'sha256-Nv/xAGm5zFyNXfczkP33y17uEAu5gKfLk214/2A0PHw=' 'sha256-ADdv50wPPkzx3+kUQepz9IYCvTxfCWwzL/wEQHt3TjM='; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' data:; connect-src 'self'; manifest-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'; object-src 'none'",
 };
 
 export default {
@@ -23,6 +28,13 @@ export default {
     if (res.status === 404 && (url.pathname === "" || url.pathname === "/")) {
       const indexReq = new Request(new URL("/index.html", url.origin), request);
       res = await env.ASSETS.fetch(indexReq);
+    }
+
+    if (res.status === 404) {
+      return new Response("Not found", {
+        status: 404,
+        headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store", ...SECURITY },
+      });
     }
 
     const headers = new Headers(res.headers);

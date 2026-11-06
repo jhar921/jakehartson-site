@@ -81,12 +81,6 @@ function toggleTheme() {
   render(document.getElementById("lifts-app"));
 }
 
-function themeToggleLabel() {
-  const t = currentTheme();
-  if (t === "dark") return `<span>DARK</span> <b>/</b> <span>LIGHT</span>`;
-  return `<span>DARK</span> <b>/</b> <span>LIGHT</span>`;
-}
-
 function themeToggleMarkup() {
   const t = currentTheme();
   const dark = t === "dark" ? "<b>DARK</b>" : "DARK";
@@ -242,7 +236,7 @@ function renderHistory() {
                       return `${LIFTS[l.lift].name} ${formatWeight(l.weight)} × ${l.sets.join("/")}${ok ? "" : " (miss)"}`;
                     })
                     .join(" · ");
-                  return `<li><div class="hist-top"><strong>Workout ${s.kind}</strong><time datetime="${escapeAttr(s.completedAt)}">${formatDate(s.completedAt)}</time></div><p>${escapeHtml(lines)}</p></li>`;
+                  return `<li><div class="hist-top"><strong>Workout ${escapeHtml(s.kind)}</strong><time datetime="${escapeAttr(s.completedAt)}">${escapeHtml(formatDate(s.completedAt))}</time></div><p>${escapeHtml(lines)}</p></li>`;
                 })
                 .join("")}
             </ol>`

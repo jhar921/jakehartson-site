@@ -34,9 +34,11 @@
   --hud-warn: #F5B83D;
   --hud-critical: #FF6B5E;
   --hud-focus: #F0F0FA;
-  --pad: 48px;
   color-scheme: dark;
 }
+
+/* Layout var kept out of the theme block so the responsive :root rules below win. */
+:root { --pad: 48px; }
 
 :root[data-theme="light"] {
   --hud-bg: #F4F4F6;

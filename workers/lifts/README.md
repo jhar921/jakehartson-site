@@ -6,8 +6,13 @@ trademarks. Data stays in `localStorage` only.
 
 ## Status
 
-- **Draft / preview only.** Do not deploy. Do not change DNS. No production traffic.
-- Go-live needs Jake’s explicit go via Cooper. See `/workspace/stronglifts-5x5/SUBDOMAIN-PLAN.md`.
+- Live at **https://lifts.jakehartson.com/** as the standalone `lifts` Worker, behind
+  Cloudflare Access (allow `jake@jakehartson.com` only). `workers.dev` and preview URLs are off.
+- Not part of the jakehartson.com Astro site; there is no `/lifts/` page there.
+- The Worker runs first on every request (`run_worker_first`) and adds noindex, CSP
+  (inline scripts pinned by SHA-256), HSTS, and other security headers. If you edit an
+  inline `<script>` in `public/index.html`, update its hash in `src/worker.js`.
+- Tests: `npm run check` (imports `public/lifts-domain.js`).
 
 ## Local preview
 
