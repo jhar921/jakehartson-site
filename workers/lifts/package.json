@@ -1,0 +1,13 @@
+{
+  "name": "jakehartson-lifts",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --local --port 8788",
+    "preview": "python3 -m http.server 8788 --directory public",
+    "check": "node scripts/test-domain.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "^4.158.0"
+  }
+}
