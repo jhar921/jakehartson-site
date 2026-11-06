@@ -177,7 +177,7 @@ export function parseStore(raw) {
           l.sets.every((r) => typeof r === "number" && Number.isFinite(r) && r >= 0) &&
           (l.notes === undefined || typeof l.notes === "string"),
       ) &&
-      (s.completedAt === undefined || typeof s.completedAt === "string"),
+      typeof s.completedAt === "string",
   );
   const draft = isValidDraft(data.draft) ? data.draft : null;
   return {

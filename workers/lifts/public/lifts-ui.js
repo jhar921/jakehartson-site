@@ -37,6 +37,7 @@ function formatWeight(n) {
 }
 
 function formatDate(iso) {
+  if (typeof iso !== "string") return "";
   try {
     return new Intl.DateTimeFormat("en-US", {
       timeZone: "America/Los_Angeles",
