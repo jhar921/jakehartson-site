@@ -217,7 +217,7 @@ button.fill:focus-visible,
 
 .tabs {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 12px;
   margin-bottom: 18px;
 }
@@ -544,4 +544,84 @@ button.fill:focus-visible,
 
 @media (min-width: 601px) and (max-width: 959px) {
   :root { --pad: 32px; }
+}
+
+.btn-solid:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+@media (hover: hover) {
+  .btn-solid:disabled:hover { background: var(--hud-ink); border-color: var(--hud-ink); }
+}
+
+.rx-weight {
+  font-size: 56px;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  color: var(--hud-t1);
+  margin: 4px 0 10px;
+  font-weight: 500;
+}
+.rx-weight .unit {
+  font-size: 14px;
+  letter-spacing: 0.16em;
+  color: var(--hud-t3);
+  margin-left: 6px;
+}
+
+.why {
+  color: var(--hud-t2);
+  font-size: 13px;
+  line-height: 1.4;
+  margin-bottom: 10px;
+}
+
+.wu {
+  color: var(--hud-t2);
+  font-size: 13px;
+  line-height: 1.45;
+  margin: 0 0 8px;
+  word-spacing: 0.15em;
+}
+.wu-label {
+  color: var(--hud-t3);
+  letter-spacing: 0.14em;
+  margin-right: 8px;
+}
+
+.plates {
+  color: var(--hud-t3);
+  font-size: 12px;
+  line-height: 1.4;
+  margin: 0 0 14px;
+}
+.plates.is-flag {
+  color: var(--hud-warn);
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 0 0 14px;
+}
+
+.notice {
+  border: 1px solid var(--hud-rule);
+  background: var(--hud-surface);
+  padding: 16px;
+  margin-bottom: 22px;
+}
+.notice .title {
+  font: 700 11px/14px "HUD Sans", Arial, sans-serif;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.notice .help { margin-bottom: 12px; }
+
+@media (max-width: 600px) {
+  .rx-weight { font-size: 44px; }
+  .tabs { gap: 8px; }
+  .tab { letter-spacing: 0.10em; font-size: 12px; }
 }

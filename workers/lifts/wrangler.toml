@@ -1,5 +1,8 @@
-# lifts.jakehartson.com — personal StrongLifts 5×5 tracker (static Worker).
+# lifts.jakehartson.com — personal StrongLifts 5x5 guide (Worker + D1).
 # Live behind Cloudflare Access. Keep workers_dev/preview_urls off so Access can't be bypassed.
+# D1 database_id is a placeholder. On deploy, run `npx wrangler d1 create lifts` and
+# `npx wrangler d1 migrations apply lifts --remote`, then paste the real id here.
+# Do not put LIFTS_DEV_BYPASS_ACCESS, ACCESS_AUD, ACCESS_TEAM_DOMAIN, or ACCESS_SERVICE_AUD here.
 name = "lifts"
 main = "src/worker.js"
 compatibility_date = "2026-10-01"
@@ -13,3 +16,9 @@ html_handling = "auto-trailing-slash"
 not_found_handling = "404-page"
 # Run the Worker for every request so security/noindex headers attach to assets too.
 run_worker_first = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lifts"
+database_id = "00000000-0000-0000-0000-000000000000"
+migrations_dir = "migrations"
