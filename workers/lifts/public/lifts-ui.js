@@ -1,39 +1,43 @@
 import {
   LIFTS,
+  STORAGE_KEY,
   WORKOUTS,
-  applyCompletedWorkout,
+  allLiftsConfirmed,
+  confirmDraftLift,
   draftToEntries,
+  doneAsPrescribed,
   ensureDraft,
   exportJson,
   firstIncompleteLiftIndex,
-  importJson,
+  formatLbs,
+  formatPlatePlan,
   isLiftSuccess,
-  loadStore,
+  needsStartingWeights,
   nextWorkoutKind,
-  saveStore,
+  platePlan,
+  prescriptionWhy,
+  warmupSets,
 } from "./lifts-domain.js";
 
 const THEME_KEY = "lifts-theme";
 
-let store = createBootStore();
+let store = null;
 let tab = "workout";
 let statusMessage = "";
-
-function createBootStore() {
-  return ensureDraft(loadStore());
-}
-
-function persist() {
-  saveStore(store);
-}
+let localImportDone = true;
+let localBackupRaw = null;
+let startingForm = { squat: "", bench: "", row: "", ohp: "", deadlift: "" };
+let settingsForm = null;
+let bootError = "";
+let draftTimer = 0;
 
 function setStatus(msg) {
   statusMessage = msg;
 }
 
 function formatWeight(n) {
-  if (n === null) return "−";
-  return Number.isInteger(n) ? String(n) : n.toFixed(1).replace(/\.0$/, "");
+  if (n === null || n === undefined) return "";
+  return formatLbs(n);
 }
 
 function formatDate(iso) {
@@ -67,7 +71,6 @@ function initTheme() {
   if (saved === "dark" || saved === "light") {
     applyTheme(saved);
   } else {
-    // OS default: leave data-theme unset so CSS media query applies, but sync meta
     document.documentElement.removeAttribute("data-theme");
     const light = window.matchMedia("(prefers-color-scheme: light)").matches;
     const meta = document.querySelector('meta[name="theme-color"]');
@@ -89,12 +92,82 @@ function themeToggleMarkup() {
   return `${dark} <span aria-hidden="true">/</span> ${light}`;
 }
 
+async function api(path, options = {}) {
+  const res = await fetch(path, {
+    ...options,
+    headers: {
+      ...(options.body ? { "content-type": "application/json" } : {}),
+      ...(options.headers || {}),
+    },
+  });
+  const text = await res.text();
+  let data = null;
+  try {
+    data = text ? JSON.parse(text) : null;
+  } catch {
+    data = null;
+  }
+  if (!res.ok) {
+    const err = new Error(data?.error || `Request failed (${res.status})`);
+    err.status = res.status;
+    throw err;
+  }
+  return data;
+}
+
+function applyPayload(payload) {
+  store = payload.store;
+  if (typeof payload.localImportDone === "boolean") localImportDone = payload.localImportDone;
+}
+
+async function persistDraftSoon() {
+  clearTimeout(draftTimer);
+  draftTimer = window.setTimeout(() => {
+    persistDraft().catch((err) => {
+      setStatus(err.message);
+      render(document.getElementById("lifts-app"));
+    });
+  }, 300);
+}
+
+async function persistDraft() {
+  if (!store?.draft) return;
+  const payload = await api("/api/draft", { method: "PUT", body: JSON.stringify({ draft: store.draft }) });
+  applyPayload(payload);
+}
+
+function peekLocalBackup() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || (parsed.version !== 1 && parsed.version !== 2)) return null;
+    if (!Array.isArray(parsed.sessions)) return null;
+    return raw;
+  } catch {
+    return null;
+  }
+}
+
 function render(root) {
+  if (bootError) {
+    root.innerHTML = `
+      <div class="shell">
+        <header class="top">
+          <div class="brand">LIFTS <span class="mark">5×5</span></div>
+        </header>
+        <p class="status" role="alert">${escapeHtml(bootError)}</p>
+      </div>`;
+    return;
+  }
+  if (!store) {
+    root.innerHTML = `<div class="shell"><p class="boot">Loading tracker…</p></div>`;
+    return;
+  }
+
   store = ensureDraft(store);
-  const draft = store.draft;
-  const kind = draft.kind;
-  const targets = WORKOUTS[kind];
-  const focusIdx = firstIncompleteLiftIndex(kind, draft);
+  const showImport = !localImportDone && !!localBackupRaw;
+  const firstRun = needsStartingWeights(store);
 
   root.innerHTML = `
     <div class="shell">
@@ -105,95 +178,168 @@ function render(root) {
         </button>
       </header>
 
-      <div class="page-head">
-        <p class="cap">Personal tracker · lb</p>
-        <p class="sub">Alternating A/B · about 45 min · rest 3–5 min between work sets</p>
-      </div>
+      ${
+        showImport
+          ? `<div class="banner notice" role="region" aria-labelledby="import-heading">
+              <h2 id="import-heading" class="title">Browser backup found</h2>
+              <p class="help">Copy it to the server store once. The browser copy is kept until you delete it yourself.</p>
+              <div class="backup">
+                <button type="button" class="btn-solid" data-action="import-local">Copy to server</button>
+                <button type="button" class="btn-outline" data-action="import-later">Not now</button>
+              </div>
+            </div>`
+          : ""
+      }
 
       <nav class="tabs" role="tablist" aria-label="Tracker views">
         <button type="button" role="tab" class="tab ${tab === "workout" ? "is-active" : ""}" data-tab="workout" aria-selected="${tab === "workout"}">Today</button>
         <button type="button" role="tab" class="tab ${tab === "history" ? "is-active" : ""}" data-tab="history" aria-selected="${tab === "history"}">History</button>
+        <button type="button" role="tab" class="tab ${tab === "settings" ? "is-active" : ""}" data-tab="settings" aria-selected="${tab === "settings"}">Settings</button>
       </nav>
 
       <div class="status" role="status" aria-live="polite">${escapeHtml(statusMessage)}</div>
 
-      ${tab === "workout" ? renderWorkout(kind, draft, targets, focusIdx) : renderHistory()}
+      ${
+        tab === "workout"
+          ? firstRun
+            ? renderStarting()
+            : renderWorkout()
+          : tab === "history"
+            ? renderHistory()
+            : renderSettings()
+      }
     </div>
   `;
 
   bind(root);
 }
 
-function renderWorkout(kind, draft, targets, focusIdx) {
-  const nextLift = targets[focusIdx];
+function renderStarting() {
+  const fields = Object.keys(LIFTS)
+    .map((id) => {
+      return `<div class="field">
+        <label for="start-${id}">${escapeHtml(LIFTS[id].name)} (lb)</label>
+        <input id="start-${id}" name="start-${id}" type="number" inputmode="decimal" step="0.5" min="0" required
+          value="${escapeAttr(startingForm[id] ?? "")}" data-start="${id}" />
+      </div>`;
+    })
+    .join("");
+  return `
+    <section class="panel" aria-labelledby="start-heading">
+      <div class="sh">
+        <h2 id="start-heading" class="title">Set starting weights</h2>
+      </div>
+      <p class="help">The app does not invent a start weight. Enter the work weight you will use on your first session for each lift.</p>
+      ${fields}
+      <button type="button" class="btn-solid" data-action="save-start">Save starting weights</button>
+    </section>
+  `;
+}
+
+function renderWorkout() {
+  const draft = store.draft;
+  const kind = draft.kind;
+  const targets = WORKOUTS[kind];
+  const focusIdx = firstIncompleteLiftIndex(kind, draft);
+  const settings = store.settings;
+  const ready = allLiftsConfirmed(kind, draft);
   return `
     <section class="panel" aria-labelledby="workout-heading">
       <div class="sh">
         <h2 id="workout-heading" class="title">Workout ${kind}</h2>
-        <span class="meta">NEXT</span>
-      </div>
-      <div class="banner">
-        <p class="next">Next up: <strong>${escapeHtml(LIFTS[nextLift.lift].name)}</strong></p>
+        <span class="meta">TODAY · about 45 min</span>
       </div>
       <ol class="list">
         ${targets
           .map((t, i) => {
             const entry = draft.entries[t.lift];
-            const complete =
-              entry.weight !== null && entry.sets.every((r) => r !== null && r !== undefined);
-            const success =
-              complete &&
-              isLiftSuccess(
-                { sets: entry.sets.map((r) => r ?? 0) },
-                t,
-              );
+            const prescribed = store.progress[t.lift].nextWeight;
+            const complete = !!entry.confirmed;
+            const logged = complete
+              ? { weight: entry.weight, sets: entry.sets.map((r) => r ?? 0) }
+              : null;
+            const success = logged && isLiftSuccess(logged, t);
+            const why = prescriptionWhy(store, t.lift);
+            const wu = prescribed == null ? [] : warmupSets(t.lift, prescribed, settings.barWeightLbs, settings.plates);
+            const plates = prescribed == null ? null : platePlan(prescribed, settings.barWeightLbs, settings.plates);
+            const showOverride = !!entry.overrideOpen && !complete;
+            const displayWeight = complete ? entry.weight : prescribed;
+            const cta = `Done ${t.sets}×${t.reps} @ ${formatWeight(prescribed)}`;
             return `
               <li class="card ${i === focusIdx ? "is-focus" : ""} ${complete ? "is-filled" : ""}" data-lift="${t.lift}">
                 <div class="card-head">
                   <h3>${escapeHtml(LIFTS[t.lift].name)}</h3>
                   <span class="scheme">${t.sets}×${t.reps}</span>
-                  ${complete ? `<span class="badge ${success ? "ok" : "miss"}">${success ? "Success" : "Miss"}</span>` : ""}
+                  ${complete ? `<span class="badge ${success ? "ok" : "miss"}">${success ? "Hit" : "Miss"}</span>` : ""}
                 </div>
-                <div class="field">
-                  <label for="w-${t.lift}">Weight (lb)</label>
-                  <input id="w-${t.lift}" name="weight-${t.lift}" type="number" inputmode="decimal" step="0.5" min="0" enterkeyhint="next"
-                    value="${entry.weight ?? ""}" data-lift="${t.lift}" data-field="weight"
-                    ${store.progress[t.lift].nextWeight === null ? 'placeholder="Starting weight"' : ""} />
-                  ${
-                    store.progress[t.lift].nextWeight !== null
-                      ? `<p class="help" id="help-w-${t.lift}">Recommended ${formatWeight(store.progress[t.lift].nextWeight)} lb${
-                          store.progress[t.lift].consecutiveFailures
-                            ? ` · ${store.progress[t.lift].consecutiveFailures} fail${store.progress[t.lift].consecutiveFailures === 1 ? "" : "s"} in a row`
-                            : ""
-                        }</p>`
-                      : `<p class="help" id="help-w-${t.lift}">No history yet. Enter your starting weight.</p>`
-                  }
-                </div>
-                <fieldset class="sets">
-                  <legend>Reps per set</legend>
-                  <div class="set-grid" style="--cols: ${t.sets}">
-                    ${Array.from({ length: t.sets }, (_, s) => `
-                      <div class="set">
-                        <label for="s-${t.lift}-${s}">Set ${s + 1}</label>
-                        <input id="s-${t.lift}-${s}" name="set-${t.lift}-${s}" type="number" inputmode="numeric" min="0" max="20" step="1" enterkeyhint="next"
-                          value="${entry.sets[s] ?? ""}" data-lift="${t.lift}" data-field="set" data-set="${s}" />
-                      </div>
-                    `).join("")}
-                  </div>
-                </fieldset>
+                <p class="rx-weight mono" aria-label="Prescribed weight ${formatWeight(displayWeight)} pounds">${formatWeight(displayWeight)} <span class="unit">LB</span></p>
+                ${
+                  complete && entry.weight !== prescribed
+                    ? `<p class="help">Prescribed ${formatWeight(prescribed)} lb</p>`
+                    : ""
+                }
+                <p class="why">${escapeHtml(why)}</p>
+                ${
+                  wu.length
+                    ? `<p class="wu mono"><span class="wu-label">WU</span> ${wu.map((s) => `${formatWeight(s.weight)}×${s.reps}`).join("  ")}</p>`
+                    : ""
+                }
+                ${plates ? `<p class="plates ${plates.flagged ? "is-flag" : ""}">${escapeHtml(formatPlatePlan(plates))}</p>` : ""}
+                ${
+                  complete
+                    ? `<p class="help">Logged ${formatWeight(entry.weight)} lb · ${entry.sets.join("/")}</p>`
+                    : showOverride
+                      ? renderOverride(t, entry)
+                      : `<div class="actions">
+                          <button type="button" class="btn-solid" data-action="done" data-lift="${t.lift}">${escapeHtml(cta)}</button>
+                          <button type="button" class="btn-outline" data-action="override" data-lift="${t.lift}">Log a different result</button>
+                        </div>`
+                }
                 <div class="field">
                   <label for="n-${t.lift}">Notes <span class="optional">(optional)</span></label>
                   <input id="n-${t.lift}" name="notes-${t.lift}" type="text" enterkeyhint="done"
-                    value="${escapeAttr(entry.notes)}" data-lift="${t.lift}" data-field="notes" autocomplete="off" />
+                    value="${escapeAttr(entry.notes ?? "")}" data-lift="${t.lift}" data-field="notes" autocomplete="off" />
                 </div>
               </li>
             `;
           })
           .join("")}
       </ol>
-      <p class="tip">Tip: rest 3–5 minutes between work sets. No timer here on purpose.</p>
-      <button type="button" class="btn-solid" data-action="complete">Mark workout complete</button>
+      <p class="tip">Rest 3 to 5 min between work sets. No timer here on purpose.</p>
+      <button type="button" class="btn-solid" data-action="complete" ${ready ? "" : "disabled"}>${ready ? "Save workout" : "Finish each lift to save"}</button>
     </section>
+  `;
+}
+
+function renderOverride(target, entry) {
+  const weight = entry.weight ?? store.progress[target.lift].nextWeight ?? "";
+  return `
+    <div class="override">
+      <div class="field">
+        <label for="w-${target.lift}">Weight (lb)</label>
+        <input id="w-${target.lift}" name="weight-${target.lift}" type="number" inputmode="decimal" step="0.5" min="0" enterkeyhint="next"
+          value="${weight ?? ""}" data-lift="${target.lift}" data-field="weight" />
+      </div>
+      <fieldset class="sets">
+        <legend>Reps per set</legend>
+        <div class="set-grid" style="--cols: ${target.sets}">
+          ${Array.from({ length: target.sets }, (_, s) => {
+            const v = entry.sets[s];
+            const shown = v === null || v === undefined ? target.reps : v;
+            return `
+              <div class="set">
+                <label for="s-${target.lift}-${s}">Set ${s + 1}</label>
+                <input id="s-${target.lift}-${s}" name="set-${target.lift}-${s}" type="number" inputmode="numeric" min="0" max="20" step="1" enterkeyhint="next"
+                  value="${shown}" data-lift="${target.lift}" data-field="set" data-set="${s}" />
+              </div>`;
+          }).join("")}
+        </div>
+      </fieldset>
+      <div class="actions">
+        <button type="button" class="btn-solid" data-action="confirm-override" data-lift="${target.lift}">Save this lift</button>
+        <button type="button" class="btn-outline" data-action="cancel-override" data-lift="${target.lift}">Back</button>
+      </div>
+    </div>
   `;
 }
 
@@ -211,10 +357,8 @@ function renderHistory() {
           .map((id) => {
             const p = store.progress[id];
             return `<li><span class="name">${escapeHtml(LIFTS[id].name)}</span><span class="val">${
-              p.nextWeight === null
-                ? "Not set"
-                : `${formatWeight(p.nextWeight)} lb`
-            }${p.consecutiveFailures ? ` · ${p.consecutiveFailures} fail streak` : ""}</span></li>`;
+              p.nextWeight === null ? "Not set" : `${formatWeight(p.nextWeight)} lb`
+            }${p.consecutiveFailures ? ` · ${p.consecutiveFailures} miss streak` : ""}</span></li>`;
           })
           .join("")}
       </ul>
@@ -234,7 +378,11 @@ function renderHistory() {
                     .map((l) => {
                       const target = WORKOUTS[s.kind].find((t) => t.lift === l.lift);
                       const ok = isLiftSuccess(l, target);
-                      return `${LIFTS[l.lift].name} ${formatWeight(l.weight)} × ${l.sets.join("/")}${ok ? "" : " (miss)"}`;
+                      const rx =
+                        l.prescribedWeight != null && l.prescribedWeight !== l.weight
+                          ? ` (did ${formatWeight(l.weight)})`
+                          : "";
+                      return `${LIFTS[l.lift].name} ${formatWeight(l.prescribedWeight ?? l.weight)}${rx} × ${l.sets.join("/")}${ok ? "" : " (miss)"}`;
                     })
                     .join(" · ");
                   return `<li><div class="hist-top"><strong>Workout ${escapeHtml(s.kind)}</strong><time datetime="${escapeAttr(s.completedAt)}">${escapeHtml(formatDate(s.completedAt))}</time></div><p>${escapeHtml(lines)}</p></li>`;
@@ -246,7 +394,7 @@ function renderHistory() {
       <div class="sh" style="margin-top:28px">
         <h2 class="title">Backup</h2>
       </div>
-      <p class="help">Data stays in this browser only. Export before clearing site data.</p>
+      <p class="help">Workouts are stored on the server behind Access. Keep an export in case you need a copy.</p>
       <div class="backup">
         <button type="button" class="btn-outline" data-action="export">Export JSON</button>
         <label class="btn-outline file-label">
@@ -258,11 +406,36 @@ function renderHistory() {
   `;
 }
 
+function renderSettings() {
+  const form = settingsForm ?? {
+    barWeightLbs: store.settings.barWeightLbs,
+    plates: store.settings.plates.join(", "),
+  };
+  return `
+    <section class="panel" aria-labelledby="settings-heading">
+      <div class="sh">
+        <h2 id="settings-heading" class="title">Bar and plates</h2>
+      </div>
+      <div class="field">
+        <label for="bar-weight">Bar (lb)</label>
+        <input id="bar-weight" name="bar" type="number" inputmode="decimal" step="0.5" min="0" value="${escapeAttr(form.barWeightLbs)}" data-settings="bar" />
+      </div>
+      <div class="field">
+        <label for="plates">Plates each side (lb)</label>
+        <input id="plates" name="plates" type="text" value="${escapeAttr(form.plates)}" data-settings="plates" autocomplete="off" />
+        <p class="help">Default commercial set is 45, 35, 25, 10, 5, 2.5. Add 1.25 if you have them. 2.5 lb jumps need 1.25s each side.</p>
+      </div>
+      <button type="button" class="btn-solid" data-action="save-settings">Save settings</button>
+    </section>
+  `;
+}
+
 function bind(root) {
   root.querySelectorAll("[data-tab]").forEach((btn) => {
     btn.addEventListener("click", () => {
       tab = btn.dataset.tab;
       setStatus("");
+      settingsForm = null;
       render(root);
     });
   });
@@ -271,13 +444,28 @@ function bind(root) {
     toggleTheme();
   });
 
+  root.querySelectorAll("input[data-start]").forEach((input) => {
+    input.addEventListener("input", () => {
+      startingForm[input.dataset.start] = input.value;
+    });
+  });
+
+  root.querySelectorAll("input[data-settings]").forEach((input) => {
+    input.addEventListener("input", () => {
+      settingsForm = settingsForm ?? {
+        barWeightLbs: store.settings.barWeightLbs,
+        plates: store.settings.plates.join(", "),
+      };
+      if (input.dataset.settings === "bar") settingsForm.barWeightLbs = input.value;
+      if (input.dataset.settings === "plates") settingsForm.plates = input.value;
+    });
+  });
+
   root.querySelectorAll("input[data-lift]").forEach((input) => {
     const sync = () => {
-      const lift = input.dataset.lift;
-      const field = input.dataset.field;
       store = ensureDraft(store);
-      const draft = store.draft;
-      const entry = draft.entries[lift];
+      const entry = store.draft.entries[input.dataset.lift];
+      const field = input.dataset.field;
       if (field === "weight") {
         const v = input.value.trim();
         entry.weight = v === "" ? null : Number(v);
@@ -288,42 +476,205 @@ function bind(root) {
       } else if (field === "notes") {
         entry.notes = input.value;
       }
-      draft.entries[lift] = entry;
-      store = { ...store, draft };
-      persist();
+      store = { ...store, draft: store.draft };
+      persistDraftSoon();
     };
     input.addEventListener("input", sync);
     input.addEventListener("change", sync);
   });
 
-  root.querySelector('[data-action="complete"]')?.addEventListener("click", () => {
+  root.querySelector('[data-action="save-start"]')?.addEventListener("click", async () => {
+    const weights = {};
+    for (const id of Object.keys(LIFTS)) {
+      const v = startingForm[id];
+      weights[id] = v === "" ? null : Number(v);
+    }
+    try {
+      const payload = await api("/api/starting-weights", { method: "POST", body: JSON.stringify({ weights }) });
+      applyPayload(payload);
+      setStatus("Starting weights saved.");
+      render(root);
+    } catch (err) {
+      setStatus(err.message);
+      render(root);
+    }
+  });
+
+  root.querySelector('[data-action="save-settings"]')?.addEventListener("click", async () => {
+    const form = settingsForm ?? {
+      barWeightLbs: store.settings.barWeightLbs,
+      plates: store.settings.plates.join(", "),
+    };
+    const plates = String(form.plates)
+      .split(/[,\s]+/)
+      .map((p) => p.trim())
+      .filter(Boolean)
+      .map(Number);
+    try {
+      const payload = await api("/api/settings", {
+        method: "PUT",
+        body: JSON.stringify({ barWeightLbs: Number(form.barWeightLbs), plates }),
+      });
+      applyPayload(payload);
+      settingsForm = null;
+      setStatus("Settings saved.");
+      render(root);
+    } catch (err) {
+      setStatus(err.message);
+      render(root);
+    }
+  });
+
+  root.querySelectorAll('[data-action="done"]').forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const lift = btn.dataset.lift;
+      store = ensureDraft(store);
+      const target = WORKOUTS[store.draft.kind].find((t) => t.lift === lift);
+      const prescribed = store.progress[lift].nextWeight;
+      const done = doneAsPrescribed(target, prescribed);
+      const entry = store.draft.entries[lift];
+      store.draft.entries[lift] = {
+        ...entry,
+        weight: done.weight,
+        sets: done.sets,
+        confirmed: true,
+        overrideOpen: false,
+        prescribedWeight: prescribed,
+      };
+      try {
+        await persistDraft();
+        setStatus("");
+        render(root);
+      } catch (err) {
+        setStatus(err.message);
+        render(root);
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-action="override"]').forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const lift = btn.dataset.lift;
+      store = ensureDraft(store);
+      const target = WORKOUTS[store.draft.kind].find((t) => t.lift === lift);
+      const entry = store.draft.entries[lift];
+      const prescribed = store.progress[lift].nextWeight;
+      store.draft.entries[lift] = {
+        ...entry,
+        weight: entry.weight ?? prescribed,
+        sets: entry.sets.map((r) => (r === null || r === undefined ? target.reps : r)),
+        overrideOpen: true,
+      };
+      try {
+        await persistDraft();
+        render(root);
+        root.querySelector(`#w-${lift}`)?.focus();
+      } catch (err) {
+        setStatus(err.message);
+        render(root);
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-action="cancel-override"]').forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const lift = btn.dataset.lift;
+      store = ensureDraft(store);
+      store.draft.entries[lift].overrideOpen = false;
+      try {
+        await persistDraft();
+        render(root);
+      } catch (err) {
+        setStatus(err.message);
+        render(root);
+      }
+    });
+  });
+
+  root.querySelectorAll('[data-action="confirm-override"]').forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const lift = btn.dataset.lift;
+      store = ensureDraft(store);
+      const target = WORKOUTS[store.draft.kind].find((t) => t.lift === lift);
+      const prescribed = store.progress[lift].nextWeight;
+      const entry = confirmDraftLift(store.draft.entries[lift], target, prescribed);
+      if (entry.weight === null || !Number.isFinite(entry.weight) || entry.weight <= 0) {
+        setStatus(`Enter a weight for ${LIFTS[lift].name}.`);
+        render(root);
+        return;
+      }
+      if (entry.sets.some((r) => r === null || r === undefined || !Number.isFinite(r))) {
+        setStatus(`Log reps for every set of ${LIFTS[lift].name}.`);
+        render(root);
+        return;
+      }
+      store.draft.entries[lift] = { ...entry, prescribedWeight: prescribed };
+      try {
+        await persistDraft();
+        setStatus("");
+        render(root);
+      } catch (err) {
+        setStatus(err.message);
+        render(root);
+      }
+    });
+  });
+
+  root.querySelector('[data-action="complete"]')?.addEventListener("click", async () => {
     store = ensureDraft(store);
     const draft = store.draft;
-    const parsed = draftToEntries(draft.kind, draft);
+    if (!allLiftsConfirmed(draft.kind, draft)) {
+      setStatus("Finish each lift before saving.");
+      render(root);
+      return;
+    }
+    const parsed = draftToEntries(draft.kind, draft, store.progress);
     if (!parsed.ok) {
       setStatus(parsed.message);
       render(root);
       return;
     }
-    store = applyCompletedWorkout(store, draft.kind, parsed.lifts);
-    store = ensureDraft(store);
-    persist();
-    setStatus(`Workout ${draft.kind} saved. Next up: Workout ${store.draft.kind}.`);
-    tab = "workout";
-    render(root);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    try {
+      const payload = await api("/api/workouts", {
+        method: "POST",
+        body: JSON.stringify({ kind: draft.kind, lifts: parsed.lifts }),
+      });
+      applyPayload(payload);
+      store = ensureDraft(store);
+      setStatus(`Workout ${draft.kind} saved. Next up: Workout ${store.draft.kind}.`);
+      tab = "workout";
+      render(root);
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    } catch (err) {
+      setStatus(err.message);
+      render(root);
+    }
   });
 
-  root.querySelector('[data-action="export"]')?.addEventListener("click", () => {
-    const blob = new Blob([exportJson(store)], { type: "application/json" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = `stronglifts-5x5-${new Date().toISOString().slice(0, 10)}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    setStatus("Exported backup JSON.");
-    render(root);
+  root.querySelector('[data-action="export"]')?.addEventListener("click", async () => {
+    try {
+      const res = await fetch("/api/export");
+      if (!res.ok) throw new Error("Export failed.");
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `stronglifts-5x5-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setStatus("Exported backup JSON.");
+      render(root);
+    } catch {
+      const blob = new Blob([exportJson(store)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `stronglifts-5x5-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setStatus("Exported backup JSON.");
+      render(root);
+    }
   });
 
   root.querySelector('[data-action="import"]')?.addEventListener("change", async (ev) => {
@@ -331,8 +682,9 @@ function bind(root) {
     if (!file) return;
     try {
       const text = await file.text();
-      store = ensureDraft(importJson(text));
-      persist();
+      const payload = await api("/api/import", { method: "POST", body: JSON.stringify({ json: text }) });
+      applyPayload(payload);
+      store = ensureDraft(store);
       setStatus("Imported backup. Draft reset to next workout.");
       tab = "history";
       render(root);
@@ -340,6 +692,29 @@ function bind(root) {
       setStatus("Import failed. Use a JSON file exported from this tracker.");
       render(root);
     }
+  });
+
+  root.querySelector('[data-action="import-local"]')?.addEventListener("click", async () => {
+    if (!localBackupRaw) return;
+    try {
+      const payload = await api("/api/import", {
+        method: "POST",
+        body: JSON.stringify({ json: localBackupRaw, source: "localStorage" }),
+      });
+      applyPayload(payload);
+      store = ensureDraft(store);
+      setStatus("Browser backup copied to the server store. The browser copy was kept.");
+      render(root);
+    } catch (err) {
+      setStatus(err.message || "Import failed.");
+      render(root);
+    }
+  });
+
+  root.querySelector('[data-action="import-later"]')?.addEventListener("click", () => {
+    localBackupRaw = null;
+    setStatus("You can import the browser backup later from History.");
+    render(root);
   });
 }
 
@@ -355,9 +730,16 @@ function escapeAttr(s) {
   return escapeHtml(s).replaceAll("'", "&#39;");
 }
 
-export function mountLiftsTracker(root) {
+export async function mountLiftsTracker(root) {
   initTheme();
-  store = createBootStore();
-  persist();
-  render(root);
+  try {
+    const payload = await api("/api/state");
+    applyPayload(payload);
+    if (!localImportDone) localBackupRaw = peekLocalBackup();
+    store = ensureDraft(store);
+    render(root);
+  } catch (err) {
+    bootError = err.status === 401 || err.status === 403 ? "Access required." : "Cannot reach the server store.";
+    render(root);
+  }
 }
