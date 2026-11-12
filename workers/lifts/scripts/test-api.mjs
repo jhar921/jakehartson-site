@@ -84,7 +84,7 @@ function waitForReady(child, port, timeoutMs = 60000) {
 async function applyMigrations(persistDir) {
   const child = spawn(
     "npx",
-    ["wrangler", "d1", "migrations", "apply", "lifts", "--local", "--persist-to", persistDir],
+    ["wrangler", "d1", "migrations", "apply", "DB", "--local", "--persist-to", persistDir],
     { cwd: root, env: { ...process.env, CI: "1" }, stdio: ["ignore", "pipe", "pipe"] },
   );
   const [stdout, stderr] = await Promise.all([
@@ -152,6 +152,7 @@ const port = 8799;
 const persist = path.join(root, ".wrangler", "test-api");
 await rm(persist, { recursive: true, force: true });
 await rm(path.join(root, ".wrangler", "test-api-locked"), { recursive: true, force: true });
+await rm(path.join(root, ".wrangler", "test-api-reg"), { recursive: true, force: true });
 const base = `http://127.0.0.1:${port}`;
 let child;
 
@@ -256,6 +257,7 @@ try {
   assert(exported.version === 2 && exported.sessions.length === 2, "export is version 2 with both sessions");
   assert(exported.draft === null, "export drops the draft");
 
+  const before = await (await fetch(`${base}/api/state`)).json();
   const imported = await fetch(`${base}/api/import`, {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -264,11 +266,17 @@ try {
   const importedJson = await imported.json();
   assert(imported.status === 200, `v1 import is 200 (got ${imported.status})`);
   assert(importedJson.store.version === 2, "v1 import migrates to v2");
-  assert(importedJson.store.sessions.length === 1 && importedJson.store.sessions[0].id === "v1-sess", "v1 session kept");
+  assert(importedJson.store.sessions.length === 3, "import merges: server sessions kept, older v1 session added");
+  assert(importedJson.store.sessions[0].id === "v1-sess", "v1 session sorted first by date");
   assert(importedJson.store.sessions[0].lifts[0].prescribedWeight === 135, "v1 prescribed fields filled");
+  assert(
+    JSON.stringify(importedJson.store.progress) === JSON.stringify(before.store.progress),
+    "older browser copy never changes server weights",
+  );
   assert(importedJson.localImportDone === true, "localStorage import marked done");
-  const pendingImport = await (await fetch(`${base}/api/vault/pending`)).json();
-  assert(pendingImport.items.length === 1 && pendingImport.items[0].sessionId === "v1-sess", "imported session is queued");
+  const pendingImport = await (await fetch(`${base}/api/vault/pending?limit=10`)).json();
+  assert(pendingImport.items.some((i) => i.sessionId === "v1-sess"), "imported session is queued");
+  assert(!pendingImport.items.some((i) => i.sessionId === pending1.items[0].sessionId), "acked session stays acked after import");
 
   const settings = await fetch(`${base}/api/settings`, {
     method: "PUT",
@@ -295,6 +303,32 @@ try {
   const draftJson = await draftRes.json();
   assert(draftRes.status === 200 && draftJson.store.draft.entries.ohp.overrideOpen === true, "draft override flag persists");
 
+  await stop(child);
+
+  // 2026-11-12 regression: starting weights + a saved lift, then "copy browser backup to server"
+  // with an empty browser store. Weights and the draft must survive.
+  const regPersist = path.join(root, ".wrangler", "test-api-reg");
+  await rm(regPersist, { recursive: true, force: true });
+  child = await startWrangler(8801, regPersist);
+  const reg = "http://127.0.0.1:8801";
+  const post = (p, body, method = "POST") =>
+    fetch(`${reg}${p}`, { method, headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((r) => r.json());
+  await post("/api/starting-weights", { weights: { squat: 185, bench: 135, row: 100, ohp: 100, deadlift: 200 } });
+  await post("/api/draft", {
+    draft: {
+      kind: "A",
+      entries: {
+        squat: { weight: 185, sets: [null, null, null, null, null], notes: "", confirmed: false, overrideOpen: false },
+        bench: { weight: 135, sets: [null, null, null, null, null], notes: "", confirmed: false, overrideOpen: false },
+        row: { weight: 100, sets: five, notes: "", confirmed: true, overrideOpen: false },
+      },
+    },
+  }, "PUT");
+  const emptyBrowser = { version: 1, sessions: [], progress: { squat: { nextWeight: null, consecutiveFailures: 0 } }, draft: null };
+  const regOut = await post("/api/import", { json: JSON.stringify(emptyBrowser), source: "localStorage" });
+  assert(regOut.store.progress.squat.nextWeight === 185 && regOut.store.progress.deadlift.nextWeight === 200, "empty browser import keeps starting weights in D1");
+  assert(regOut.store.draft?.entries.row.confirmed === true, "empty browser import keeps today's saved lift");
+  assert(regOut.importSummary.addedSessions === 0, "empty browser import adds nothing");
   await stop(child);
 
   const lockedPersist = path.join(root, ".wrangler", "test-api-locked");

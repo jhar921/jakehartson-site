@@ -16,6 +16,8 @@ import {
   isLoadable,
   isValidDraft,
   liftHit,
+  mergeImportedStore,
+  reopenDraftLift,
   needsStartingWeights,
   nearestLoadableAtOrBelow,
   nextWorkoutKind,
@@ -306,5 +308,38 @@ assert(note.markdown.includes("result: miss"), "frontmatter records miss");
 assert(liftHit({ prescribedSets: 5, prescribedReps: 5, sets: five }) === true, "hit helper");
 assert(uniqueVaultFilename("2026-11-11 A workout.md", new Set(["2026-11-11 A workout.md"])) === "2026-11-11 A workout-2.md", "same-day filename collision");
 assert(uniqueVaultFilename("2026-11-11 A workout.md", new Set(["2026-11-11 A workout.md", "2026-11-11 A workout-2.md"])) === "2026-11-11 A workout-3.md", "second collision increments");
+
+// 2026-11-12 regression: importing a browser copy with empty weights must not erase server weights.
+{
+  const server = applyStartingWeights(createEmptyStore(), { squat: 185, bench: 135, row: 100, ohp: 100, deadlift: 200 }).store;
+  server.draft = ensureDraft(server).draft;
+  server.draft.entries.row = { ...server.draft.entries.row, sets: five, confirmed: true };
+  const browser = createEmptyStore();
+  const m = mergeImportedStore(server, browser);
+  assert(m.store.progress.squat.nextWeight === 185 && m.store.progress.deadlift.nextWeight === 200, "empty browser weights never replace server weights");
+  assert(m.changed.length === 0 && m.added.length === 0, "empty browser copy changes nothing");
+  assert(m.keptDraft && m.store.draft.entries.row.confirmed === true, "server draft kept on import");
+  assert(needsStartingWeights(m.store) === false, "no starting-weights prompt after empty import");
+
+  const partial = createEmptyStore();
+  partial.progress.ohp = { nextWeight: 75, consecutiveFailures: 0 };
+  const m2 = mergeImportedStore(server, partial);
+  assert(m2.store.progress.ohp.nextWeight === 100, "older browser weight does not override a set server weight");
+
+  const emptyServer = createEmptyStore();
+  const m3 = mergeImportedStore(emptyServer, partial);
+  assert(m3.store.progress.ohp.nextWeight === 75 && m3.store.progress.squat.nextWeight === null, "browser weight fills an empty server weight");
+
+  const newer = applyCompletedWorkout(applyStartingWeights(createEmptyStore(), { squat: 185, bench: 135, row: 100, ohp: 100, deadlift: 200 }).store, "A", A(185, 135, 100), "2026-11-13T15:00:00Z");
+  const m4 = mergeImportedStore(server, newer);
+  assert(m4.added.length === 1 && m4.store.progress.squat.nextWeight === 190, "newer browser sessions carry their progression");
+  assert(m4.keptDraft === false, "draft resets when the rotation moved on");
+  const m5 = mergeImportedStore(m4.store, newer);
+  assert(m5.added.length === 0, "re-import does not duplicate sessions");
+
+  const reopened = reopenDraftLift({ weight: 100, sets: five, notes: "", confirmed: true, overrideOpen: false }, { lift: "row", sets: 5, reps: 5 });
+  assert(reopened.confirmed === false && reopened.overrideOpen === true && reopened.weight === 100, "saved lift reopens for edit with its values");
+  assert(isValidDraft({ kind: "A", entries: { ...server.draft.entries, row: reopened } }), "reopened lift is a valid draft");
+}
 
 console.log(`ok: ${passed} assertions (rotation, increments, 2.5 lb deload rounding, import/draft validation, warmup, plates, prescription, v1 migrate, vault note)`);

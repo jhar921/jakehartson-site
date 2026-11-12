@@ -25,7 +25,7 @@ version 1 files.
 cd workers/lifts
 npm install
 cp .dev.vars.example .dev.vars
-npx wrangler d1 migrations apply lifts --local
+npx wrangler d1 migrations apply DB --local
 npm run dev          # http://127.0.0.1:8788/
 ```
 

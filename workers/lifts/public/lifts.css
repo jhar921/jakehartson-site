@@ -625,3 +625,55 @@ button.fill:focus-visible,
   .tabs { gap: 8px; }
   .tab { letter-spacing: 0.10em; font-size: 12px; }
 }
+
+/* Per-lift saved state (2026-11-12). A thin rule boxes the lift once it is saved.
+   It draws in once (outline settles from 4px out), then stays static. Locked after
+   the whole workout is saved. No color beyond the existing HUD tokens. */
+.card {
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  transition: outline-color 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.card.is-saved,
+.card.is-locked {
+  margin: 8px -14px;
+  padding-left: 14px;
+  padding-right: 14px;
+  border-bottom-color: transparent;
+}
+.card.is-saved { outline-color: var(--hud-t2); }
+.card.is-locked { outline-color: var(--hud-rule); }
+.card.just-saved { animation: lift-saved-in 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes lift-saved-in {
+  from { outline-color: transparent; outline-offset: 4px; }
+  to { outline-color: var(--hud-t2); outline-offset: -1px; }
+}
+
+.saved-mark,
+.lock-mark {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font: 700 11px/14px "HUD Sans", Arial, sans-serif;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hud-t2);
+}
+.lock-mark { color: var(--hud-t3); }
+.card.is-locked .rx-weight { color: var(--hud-t2); }
+
+.saved-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 0 14px;
+}
+.btn-compact {
+  min-height: 44px;
+  padding: 0 16px;
+  font-size: 12px;
+  letter-spacing: 0.16em;
+}
+.btn-wide { width: 100%; }
+.status.is-ok { color: var(--hud-t2); }
