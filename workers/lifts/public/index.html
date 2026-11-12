@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>LIFTS · 5×5</title>
+    <meta name="description" content="Personal StrongLifts 5×5 guide. Today's prescription, warmup, and log." />
+    <meta name="robots" content="noindex, nofollow" />
+    <link rel="canonical" href="https://lifts.jakehartson.com/" />
+    <meta name="theme-color" content="#000000" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-title" content="LIFTS" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem("lifts-theme");
+          if (t === "dark" || t === "light") {
+            document.documentElement.setAttribute("data-theme", t);
+            var m = document.querySelector('meta[name="theme-color"]');
+            if (m) m.setAttribute("content", t === "light" ? "#F4F4F6" : "#000000");
+          }
+        } catch (e) {}
+      })();
+    </script>
+    <link rel="stylesheet" href="./lifts.css" />
+  </head>
+  <body>
+    <a class="visually-hidden" href="#lifts-app">Skip to tracker</a>
+    <div id="lifts-app"><p class="boot">Loading tracker…</p></div>
+    <script type="module">
+      import { mountLiftsTracker } from "./lifts-ui.js";
+      const root = document.getElementById("lifts-app");
+      if (root) mountLiftsTracker(root);
+    </script>
+  </body>
+</html>
