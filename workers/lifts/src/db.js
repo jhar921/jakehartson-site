@@ -7,6 +7,7 @@ import {
   defaultSettings,
   importJson,
   isValidDraft,
+  mergeImportedStore,
   nextWorkoutKind,
   parseStore,
 } from "../public/lifts-domain.js";
@@ -239,34 +240,31 @@ export async function saveStartingWeights(db, weights) {
   return { ok: true, store: await loadStore(db) };
 }
 
-export async function replaceFromImport(db, text, { markLocalImport = false } = {}) {
+/**
+ * Import a backup (browser copy or JSON file) by MERGING it into D1.
+ * It never deletes server sessions, never replaces a server weight with an empty one,
+ * and keeps today's draft unless the import carries newer sessions. See mergeImportedStore.
+ * (Before 2026-11-12 this wiped D1 and replaced it, which erased Jake's starting weights.)
+ */
+export async function mergeFromImport(db, text, { markLocalImport = false } = {}) {
   const imported = importJson(text);
-  const existingAcked = await db
-    .prepare("SELECT session_id FROM vault_queue WHERE status = 'acked'")
-    .all();
-  const acked = new Set((existingAcked.results ?? []).map((r) => r.session_id));
+  const server = await loadStore(db);
+  const settingsRow = await db.prepare("SELECT updated_at FROM settings WHERE id = 1").first();
+  const serverSettingsAreDefault = !settingsRow || String(settingsRow.updated_at).startsWith("1970-");
+  const merged = mergeImportedStore(server, imported, { serverSettingsAreDefault });
   const createdAt = nowIso();
-  const stmts = [
-    db.prepare("DELETE FROM session_lifts"),
-    db.prepare("DELETE FROM vault_queue"),
-    db.prepare("DELETE FROM sessions"),
-    db.prepare("DELETE FROM draft"),
-    settingsStatement(db, imported.settings, createdAt),
-    ...progressStatements(db, imported.progress),
-  ];
-  for (const session of imported.sessions) {
+  const stmts = [...progressStatements(db, merged.store.progress)];
+  if (merged.settingsFromImport) stmts.push(settingsStatement(db, merged.store.settings, createdAt));
+  for (const session of merged.added) {
     stmts.push(...sessionStatements(db, session, createdAt));
   }
+  if (!merged.keptDraft) stmts.push(db.prepare("DELETE FROM draft WHERE id = 1"));
   await db.batch(stmts);
-  // Restore ack state for session ids that survived the import.
-  for (const id of acked) {
-    await db
-      .prepare("UPDATE vault_queue SET status = 'acked', acked_at = COALESCE(acked_at, ?) WHERE session_id = ?")
-      .bind(createdAt, id)
-      .run();
-  }
   if (markLocalImport) await setMeta(db, "local_import_done", "1");
-  return { store: await loadStore(db) };
+  return {
+    store: await loadStore(db),
+    summary: { addedSessions: merged.added.length, changedLifts: merged.changed, keptDraft: merged.keptDraft },
+  };
 }
 
 export async function pendingVault(db, limit = 20) {

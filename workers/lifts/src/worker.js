@@ -12,7 +12,7 @@ import {
   getMeta,
   loadStore,
   pendingVault,
-  replaceFromImport,
+  mergeFromImport,
   saveDraft,
   saveSettings,
   saveStartingWeights,
@@ -141,10 +141,8 @@ async function handleApi(request, env) {
     if (!read.ok || !textBody) return json({ error: "Invalid backup JSON" }, 400);
     try {
       const markLocalImport = read.body?.source === "localStorage";
-      await replaceFromImport(env.DB, typeof read.body?.json === "string" ? read.body.json : JSON.stringify(read.body.data ?? read.body), {
-        markLocalImport,
-      });
-      return json(await statePayload(env));
+      const result = await mergeFromImport(env.DB, textBody, { markLocalImport });
+      return json({ ...(await statePayload(env)), importSummary: result.summary });
     } catch {
       return json({ error: "Invalid backup JSON" }, 400);
     }

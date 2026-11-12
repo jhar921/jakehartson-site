@@ -707,3 +707,84 @@ function yamlQuote(value) {
   }
   return s;
 }
+
+function sessionTime(s) {
+  const t = Date.parse(s?.completedAt);
+  return Number.isFinite(t) ? t : 0;
+}
+
+function latestSessionTime(sessions) {
+  return sessions.reduce((max, s) => Math.max(max, sessionTime(s)), 0);
+}
+
+function sessionKey(s) {
+  return `${s.kind}|${sessionTime(s)}`;
+}
+
+/**
+ * Merge an imported backup (browser copy or JSON file) into the server store without
+ * ever losing server data. Rules:
+ * - An empty (null) imported weight never replaces a server weight.
+ * - A server weight that is empty is filled from the import.
+ * - When both are set, the import only wins if its newest session is newer than the
+ *   server's newest session (it then carries the newer progression).
+ * - Sessions are unioned by id (and by kind + completed time), never deleted.
+ * - The server draft is kept unless the import adds newer sessions (rotation moved on).
+ * - Settings only come from the import when the server still has defaults.
+ */
+export function mergeImportedStore(server, imported, { serverSettingsAreDefault = false } = {}) {
+  const ids = new Set(server.sessions.map((s) => s.id));
+  const keys = new Set(server.sessions.map(sessionKey));
+  const added = [];
+  for (const s of imported.sessions) {
+    if (ids.has(s.id) || keys.has(sessionKey(s))) continue;
+    ids.add(s.id);
+    keys.add(sessionKey(s));
+    added.push(s);
+  }
+  const serverLast = latestSessionTime(server.sessions);
+  const importLast = latestSessionTime(imported.sessions);
+  const importIsNewer = importLast > serverLast;
+
+  const progress = {};
+  const changed = [];
+  for (const id of Object.keys(LIFTS)) {
+    const srv = server.progress?.[id] ?? { nextWeight: null, consecutiveFailures: 0 };
+    const imp = imported.progress?.[id] ?? { nextWeight: null, consecutiveFailures: 0 };
+    let pick = srv;
+    if (imp.nextWeight == null) pick = srv;
+    else if (srv.nextWeight == null) pick = imp;
+    else pick = importIsNewer ? imp : srv;
+    progress[id] = { nextWeight: pick.nextWeight, consecutiveFailures: pick.consecutiveFailures ?? 0 };
+    if (progress[id].nextWeight !== srv.nextWeight || progress[id].consecutiveFailures !== (srv.consecutiveFailures ?? 0)) {
+      changed.push(id);
+    }
+  }
+
+  const sessions = [...server.sessions, ...added].sort((a, b) => sessionTime(a) - sessionTime(b));
+  const keepDraft = !(added.length && importIsNewer);
+  return {
+    store: {
+      version: STORE_VERSION,
+      sessions,
+      progress,
+      draft: keepDraft ? server.draft : null,
+      settings: serverSettingsAreDefault ? normalizeSettings(imported.settings) : normalizeSettings(server.settings),
+    },
+    added,
+    changed,
+    keptDraft: keepDraft,
+    settingsFromImport: serverSettingsAreDefault,
+  };
+}
+
+/** Reopen a saved lift for editing (only while the workout itself is not saved). */
+export function reopenDraftLift(entry, target) {
+  return {
+    ...entry,
+    sets: entry.sets.map((r) => (r === null || r === undefined ? target.reps : r)),
+    confirmed: false,
+    overrideOpen: true,
+    edited: true,
+  };
+}

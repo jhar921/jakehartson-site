@@ -16,6 +16,8 @@ import {
   nextWorkoutKind,
   platePlan,
   prescriptionWhy,
+  reopenDraftLift,
+  sessionDate,
   warmupSets,
 } from "./lifts-domain.js";
 
@@ -30,9 +32,22 @@ let startingForm = { squat: "", bench: "", row: "", ohp: "", deadlift: "" };
 let settingsForm = null;
 let bootError = "";
 let draftTimer = 0;
+// Lift whose box just got its saved outline (animates once, then stays static).
+let justSavedLift = null;
+// The workout saved today. Shown read-only (locked) until the lifter opens the next one.
+let lockedSession = null;
+let statusTone = "warn";
 
-function setStatus(msg) {
+const CHECK_SVG = `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><path d="M2 6.4 4.7 9 10 3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>`;
+const LOCK_SVG = `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><rect x="2.5" y="5.5" width="7" height="5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>`;
+
+function todayLA() {
+  return sessionDate(new Date().toISOString());
+}
+
+function setStatus(msg, tone = "warn") {
   statusMessage = msg;
+  statusTone = tone;
 }
 
 function formatWeight(n) {
@@ -181,10 +196,10 @@ function render(root) {
       ${
         showImport
           ? `<div class="banner notice" role="region" aria-labelledby="import-heading">
-              <h2 id="import-heading" class="title">Browser backup found</h2>
-              <p class="help">Copy it to the server store once. The browser copy is kept until you delete it yourself.</p>
+              <h2 id="import-heading" class="title">Browser history found</h2>
+              <p class="help">Adds sessions from this browser to the server. Your server weights and today's lifts are kept. The browser copy stays too.</p>
               <div class="backup">
-                <button type="button" class="btn-solid" data-action="import-local">Copy to server</button>
+                <button type="button" class="btn-solid" data-action="import-local">Add to server</button>
                 <button type="button" class="btn-outline" data-action="import-later">Not now</button>
               </div>
             </div>`
@@ -197,13 +212,15 @@ function render(root) {
         <button type="button" role="tab" class="tab ${tab === "settings" ? "is-active" : ""}" data-tab="settings" aria-selected="${tab === "settings"}">Settings</button>
       </nav>
 
-      <div class="status" role="status" aria-live="polite">${escapeHtml(statusMessage)}</div>
+      <div class="status ${statusTone === "ok" ? "is-ok" : ""}" role="status" aria-live="polite">${escapeHtml(statusMessage)}</div>
 
       ${
         tab === "workout"
           ? firstRun
             ? renderStarting()
-            : renderWorkout()
+            : lockedSession
+              ? renderLocked(lockedSession)
+              : renderWorkout()
           : tab === "history"
             ? renderHistory()
             : renderSettings()
@@ -266,11 +283,12 @@ function renderWorkout() {
             const displayWeight = complete ? entry.weight : prescribed;
             const cta = `Done ${t.sets}×${t.reps} @ ${formatWeight(prescribed)}`;
             return `
-              <li class="card ${i === focusIdx ? "is-focus" : ""} ${complete ? "is-filled" : ""}" data-lift="${t.lift}">
+              <li class="card ${i === focusIdx && !complete ? "is-focus" : ""} ${complete ? "is-filled is-saved" : ""} ${complete && justSavedLift === t.lift ? "just-saved" : ""}" data-lift="${t.lift}">
                 <div class="card-head">
                   <h3>${escapeHtml(LIFTS[t.lift].name)}</h3>
                   <span class="scheme">${t.sets}×${t.reps}</span>
                   ${complete ? `<span class="badge ${success ? "ok" : "miss"}">${success ? "Hit" : "Miss"}</span>` : ""}
+                  ${complete ? `<span class="saved-mark">${CHECK_SVG}Saved</span>` : ""}
                 </div>
                 <p class="rx-weight mono" aria-label="Prescribed weight ${formatWeight(displayWeight)} pounds">${formatWeight(displayWeight)} <span class="unit">LB</span></p>
                 ${
@@ -287,7 +305,10 @@ function renderWorkout() {
                 ${plates ? `<p class="plates ${plates.flagged ? "is-flag" : ""}">${escapeHtml(formatPlatePlan(plates))}</p>` : ""}
                 ${
                   complete
-                    ? `<p class="help">Logged ${formatWeight(entry.weight)} lb · ${entry.sets.join("/")}</p>`
+                    ? `<div class="saved-row">
+                        <p class="help">Logged ${formatWeight(entry.weight)} lb · ${entry.sets.join("/")}</p>
+                        <button type="button" class="btn-outline btn-compact" data-action="edit-lift" data-lift="${t.lift}" aria-label="Edit ${escapeAttr(LIFTS[t.lift].name)}">Edit</button>
+                      </div>`
                     : showOverride
                       ? renderOverride(t, entry)
                       : `<div class="actions">
@@ -307,6 +328,38 @@ function renderWorkout() {
       </ol>
       <p class="tip">Rest 3 to 5 min between work sets. No timer here on purpose.</p>
       <button type="button" class="btn-solid" data-action="complete" ${ready ? "" : "disabled"}>${ready ? "Save workout" : "Finish each lift to save"}</button>
+    </section>
+  `;
+}
+
+function renderLocked(session) {
+  const nextKind = session.kind === "A" ? "B" : "A";
+  return `
+    <section class="panel" aria-labelledby="locked-heading">
+      <div class="sh">
+        <h2 id="locked-heading" class="title">Workout ${escapeHtml(session.kind)} · saved</h2>
+        <span class="lock-mark">${LOCK_SVG}Locked</span>
+      </div>
+      <ol class="list">
+        ${session.lifts
+          .map((l) => {
+            const target = WORKOUTS[session.kind].find((t) => t.lift === l.lift);
+            const ok = isLiftSuccess(l, target);
+            return `
+              <li class="card is-locked" data-lift="${l.lift}" aria-readonly="true">
+                <div class="card-head">
+                  <h3>${escapeHtml(LIFTS[l.lift].name)}</h3>
+                  <span class="scheme">${target.sets}×${target.reps}</span>
+                  <span class="badge ${ok ? "ok" : "miss"}">${ok ? "Hit" : "Miss"}</span>
+                </div>
+                <p class="rx-weight mono">${formatWeight(l.weight)} <span class="unit">LB</span></p>
+                <p class="help">Logged ${formatWeight(l.weight)} lb · ${l.sets.join("/")}${l.notes ? ` · ${escapeHtml(l.notes)}` : ""}</p>
+              </li>`;
+          })
+          .join("")}
+      </ol>
+      <p class="tip">Saved workouts are final. Next up is Workout ${nextKind}.</p>
+      <button type="button" class="btn-outline btn-wide" data-action="open-next">Open Workout ${nextKind}</button>
     </section>
   `;
 }
@@ -543,13 +596,40 @@ function bind(root) {
       };
       try {
         await persistDraft();
-        setStatus("");
-        render(root);
+        markSaved(root, lift);
       } catch (err) {
         setStatus(err.message);
         render(root);
       }
     });
+  });
+
+  root.querySelectorAll('[data-action="edit-lift"]').forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      const lift = btn.dataset.lift;
+      if (lockedSession) return;
+      store = ensureDraft(store);
+      const target = WORKOUTS[store.draft.kind].find((t) => t.lift === lift);
+      store.draft.entries[lift] = reopenDraftLift(store.draft.entries[lift], target);
+      justSavedLift = null;
+      try {
+        await persistDraft();
+        setStatus("");
+        render(root);
+        root.querySelector(`#w-${lift}`)?.focus();
+      } catch (err) {
+        setStatus(err.message);
+        render(root);
+      }
+    });
+  });
+
+  root.querySelector('[data-action="open-next"]')?.addEventListener("click", () => {
+    lockedSession = null;
+    justSavedLift = null;
+    setStatus("");
+    render(root);
+    window.scrollTo({ top: 0 });
   });
 
   root.querySelectorAll('[data-action="override"]').forEach((btn) => {
@@ -580,7 +660,13 @@ function bind(root) {
     btn.addEventListener("click", async () => {
       const lift = btn.dataset.lift;
       store = ensureDraft(store);
-      store.draft.entries[lift].overrideOpen = false;
+      const entry = store.draft.entries[lift];
+      entry.overrideOpen = false;
+      // Backing out of an edit puts the lift back to its saved state.
+      if (entry.edited) {
+        entry.confirmed = true;
+        entry.edited = false;
+      }
       try {
         await persistDraft();
         render(root);
@@ -608,11 +694,10 @@ function bind(root) {
         render(root);
         return;
       }
-      store.draft.entries[lift] = { ...entry, prescribedWeight: prescribed };
+      store.draft.entries[lift] = { ...entry, edited: false, prescribedWeight: prescribed };
       try {
         await persistDraft();
-        setStatus("");
-        render(root);
+        markSaved(root, lift);
       } catch (err) {
         setStatus(err.message);
         render(root);
@@ -641,7 +726,9 @@ function bind(root) {
       });
       applyPayload(payload);
       store = ensureDraft(store);
-      setStatus(`Workout ${draft.kind} saved. Next up: Workout ${store.draft.kind}.`);
+      lockedSession = payload.session ?? store.sessions.at(-1) ?? null;
+      justSavedLift = null;
+      setStatus(`Workout ${draft.kind} saved and locked.`, "ok");
       tab = "workout";
       render(root);
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -685,7 +772,8 @@ function bind(root) {
       const payload = await api("/api/import", { method: "POST", body: JSON.stringify({ json: text }) });
       applyPayload(payload);
       store = ensureDraft(store);
-      setStatus("Imported backup. Draft reset to next workout.");
+      const added = payload.importSummary?.addedSessions ?? 0;
+      setStatus(`Imported backup. ${added} new session${added === 1 ? "" : "s"} merged. Server weights kept.`, "ok");
       tab = "history";
       render(root);
     } catch {
@@ -703,7 +791,13 @@ function bind(root) {
       });
       applyPayload(payload);
       store = ensureDraft(store);
-      setStatus("Browser backup copied to the server store. The browser copy was kept.");
+      const added = payload.importSummary?.addedSessions ?? 0;
+      setStatus(
+        added
+          ? `Added ${added} session${added === 1 ? "" : "s"} from this browser. Server weights kept.`
+          : "Nothing new in the browser copy. Server weights kept.",
+        "ok",
+      );
       render(root);
     } catch (err) {
       setStatus(err.message || "Import failed.");
@@ -716,6 +810,16 @@ function bind(root) {
     setStatus("You can import the browser backup later from History.");
     render(root);
   });
+}
+
+function markSaved(root, lift) {
+  justSavedLift = lift;
+  setStatus(`${LIFTS[lift].name} saved. Tap Edit to change it.`, "ok");
+  render(root);
+  // The outline animates in once; later renders show it static.
+  window.setTimeout(() => {
+    if (justSavedLift === lift) justSavedLift = null;
+  }, 600);
 }
 
 function escapeHtml(s) {
@@ -736,6 +840,8 @@ export async function mountLiftsTracker(root) {
     const payload = await api("/api/state");
     applyPayload(payload);
     if (!localImportDone) localBackupRaw = peekLocalBackup();
+    const last = store.sessions.at(-1);
+    if (last && sessionDate(last.completedAt) === todayLA()) lockedSession = last;
     store = ensureDraft(store);
     render(root);
   } catch (err) {
