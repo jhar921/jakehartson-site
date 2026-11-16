@@ -677,3 +677,199 @@ button.fill:focus-visible,
 }
 .btn-wide { width: 100%; }
 .status.is-ok { color: var(--hud-t2); }
+
+/* Per-set working rows and optional warm-up (2026-11-16 card clarity). */
+.work-sets {
+  margin: 0 0 16px;
+  padding: 0;
+  border: 0;
+}
+.work-sets legend {
+  width: 100%;
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  color: var(--hud-t2);
+  padding: 0 0 8px;
+  margin: 0 0 8px;
+  border-bottom: 1px solid var(--hud-rule);
+}
+.work-set-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.work-set { padding: 0; }
+.set-name {
+  font-size: 11px;
+  line-height: 14px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hud-t2);
+  margin: 0 0 6px;
+}
+.set-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.set-qty {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+.set-qty input {
+  width: 4.5rem;
+  min-height: 48px;
+  padding: 8px;
+  border: 1px solid var(--hud-rail);
+  background: var(--hud-surface);
+  color: var(--hud-t1);
+  font-family: "HUD Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "calt" 0, "liga" 0;
+  font-size: 16px;
+  border-radius: 0;
+}
+.set-qty input:focus-visible {
+  border-color: var(--hud-focus);
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 2px;
+}
+.set-unit {
+  font-size: 12px;
+  letter-spacing: 0.04em;
+  color: var(--hud-t3);
+}
+.set-times {
+  color: var(--hud-t3);
+  font-size: 16px;
+  padding: 0 2px;
+}
+.set-check {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 48px;
+  margin-left: auto;
+  padding-inline: 4px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1.2;
+  color: var(--hud-t1);
+  user-select: none;
+}
+.set-check input[type="checkbox"],
+.wu-row input[type="checkbox"] {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 24px;
+  height: 24px;
+  margin: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  box-sizing: border-box;
+  border: 2px solid var(--hud-t1);
+  background: var(--hud-surface);
+  border-radius: 0;
+  accent-color: var(--hud-ink);
+}
+.wu-row input[type="checkbox"] {
+  width: 22px;
+  height: 22px;
+}
+.set-check input[type="checkbox"]:checked,
+.wu-row input[type="checkbox"]:checked {
+  background: var(--hud-ink);
+  border-color: var(--hud-ink);
+}
+.set-check input[type="checkbox"]:checked::after,
+.wu-row input[type="checkbox"]:checked::after {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 11px;
+  border: solid var(--hud-on-ink);
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+  margin: 2px auto 0;
+}
+.set-check input[type="checkbox"]:focus-visible,
+.wu-row input[type="checkbox"]:focus-visible {
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 3px;
+}
+.work-set.is-done .set-qty input {
+  border-color: var(--hud-t2);
+}
+
+.wu-block {
+  margin: 0 0 14px;
+  border: 1px solid var(--hud-rule);
+  background: var(--hud-surface);
+}
+.wu-block summary {
+  list-style: none;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  padding: 0 12px;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--hud-t1);
+}
+.wu-block summary::-webkit-details-marker { display: none; }
+.wu-block summary::before {
+  content: "";
+  width: 0;
+  height: 0;
+  border-block-start: 5px solid transparent;
+  border-block-end: 5px solid transparent;
+  border-inline-start: 7px solid var(--hud-t3);
+  margin-inline-end: 10px;
+  transform-origin: 30% 50%;
+}
+.wu-block[open] summary::before {
+  transform: rotate(90deg);
+}
+.wu-list {
+  list-style: none;
+  margin: 0;
+  padding: 0 12px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.wu-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 44px;
+  font-family: "HUD Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  color: var(--hud-t2);
+  cursor: pointer;
+}
+.wu-block summary:focus-visible {
+  outline: 2px solid var(--hud-focus);
+  outline-offset: 3px;
+}
+
+.work-set input:disabled,
+.set-check:has(input:disabled),
+.wu-row:has(input:disabled) {
+  cursor: default;
+}
+.work-set input:disabled,
+.set-check input:disabled,
+.wu-row input:disabled {
+  opacity: 0.7;
+  cursor: default;
+}

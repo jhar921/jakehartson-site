@@ -110,12 +110,13 @@ def main():
                 page.add_init_script(f"localStorage.setItem('lifts-theme', '{theme}');")
                 reset_today_draft()
                 page.goto(BASE + "/", wait_until="networkidle")
-                page.wait_for_selector("button[data-action='done']")
+                page.wait_for_selector(".work-set")
                 shot(page, f"today-{size}-{theme}")
 
-                page.locator('[data-action="override"]').first.click()
-                page.wait_for_selector(".override")
-                shot(page, f"today-override-{size}-{theme}")
+                squat = page.locator('.card[data-lift="squat"]')
+                squat.locator('input[data-field="check"][data-set="0"]').check()
+                squat.locator('input[data-field="set"][data-set="0"]').wait_for()
+                shot(page, f"today-partial-{size}-{theme}")
 
                 page.get_by_role("tab", name="History").click()
                 page.wait_for_selector(".history, .weight-list")
