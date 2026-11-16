@@ -3,21 +3,23 @@ import {
   STORAGE_KEY,
   WORKOUTS,
   allLiftsConfirmed,
-  confirmDraftLift,
+  applySetCheck,
   draftToEntries,
-  doneAsPrescribed,
   ensureDraft,
   exportJson,
   firstIncompleteLiftIndex,
   formatLbs,
-  formatPlatePlan,
+  formatPlatePlanPlain,
+  formatScheme,
+  formatSetsAtWeight,
   isLiftSuccess,
   needsStartingWeights,
   nextWorkoutKind,
   platePlan,
   prescriptionWhy,
-  reopenDraftLift,
   sessionDate,
+  setChecksOf,
+  warmupChecksOf,
   warmupSets,
 } from "./lifts-domain.js";
 
@@ -37,6 +39,8 @@ let justSavedLift = null;
 // The workout saved today. Shown read-only (locked) until the lifter opens the next one.
 let lockedSession = null;
 let statusTone = "warn";
+// Lift ids whose warm-up section the lifter opened (kept across re-renders).
+const openWarmups = new Set();
 
 const CHECK_SVG = `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><path d="M2 6.4 4.7 9 10 3.2" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="square"/></svg>`;
 const LOCK_SVG = `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" focusable="false"><rect x="2.5" y="5.5" width="7" height="5" fill="none" stroke="currentColor" stroke-width="1.2"/><path d="M4 5.5V4a2 2 0 0 1 4 0v1.5" fill="none" stroke="currentColor" stroke-width="1.2"/></svg>`;
@@ -253,6 +257,105 @@ function renderStarting() {
   `;
 }
 
+function renderWarmup(target, wu, checks, open) {
+  return `
+    <details class="wu-block" data-lift="${target.lift}" ${open ? "open" : ""}>
+      <summary>
+        <span class="wu-summary">Warm-up (optional)</span>
+      </summary>
+      <ul class="wu-list">
+        ${wu
+          .map((s, i) => {
+            return `<li>
+              <label class="wu-row" for="wu-${target.lift}-${i}">
+                <input id="wu-${target.lift}-${i}" name="warmup-${target.lift}-${i}" type="checkbox"
+                  data-lift="${target.lift}" data-field="warmup-check" data-set="${i}" ${checks[i] ? "checked" : ""}>
+                <span>${formatWeight(s.weight)} lb × ${s.reps} reps</span>
+              </label>
+            </li>`;
+          })
+          .join("")}
+      </ul>
+    </details>
+  `;
+}
+
+function renderWorkSets(target, entry, checks, weight, locked) {
+  const disabled = locked ? "disabled" : "";
+  const shownWeight = weight ?? "";
+  return `
+    <fieldset class="work-sets">
+      <legend>Working sets</legend>
+      <ol class="work-set-list">
+        ${Array.from({ length: target.sets }, (_, s) => {
+          const reps = entry.sets[s];
+          const shownReps = reps === null || reps === undefined ? target.reps : reps;
+          return `
+            <li class="work-set ${checks[s] ? "is-done" : ""}">
+              <p class="set-name" id="set-name-${target.lift}-${s}">Set ${s + 1}</p>
+              <div class="set-row">
+                <div class="set-qty">
+                  <label class="visually-hidden" for="w-${target.lift}-${s}">Weight for set ${s + 1}, pounds</label>
+                  <input id="w-${target.lift}-${s}" name="weight-${target.lift}-${s}" type="number" inputmode="decimal" step="0.5" min="0" enterkeyhint="next"
+                    value="${shownWeight}" data-lift="${target.lift}" data-field="weight" ${disabled} autocomplete="off">
+                  <span class="set-unit" aria-hidden="true">lb</span>
+                </div>
+                <span class="set-times" aria-hidden="true">×</span>
+                <div class="set-qty">
+                  <label class="visually-hidden" for="s-${target.lift}-${s}">Reps for set ${s + 1}</label>
+                  <input id="s-${target.lift}-${s}" name="set-${target.lift}-${s}" type="number" inputmode="numeric" min="0" max="20" step="1" enterkeyhint="next"
+                    value="${shownReps}" data-lift="${target.lift}" data-field="set" data-set="${s}" ${disabled} autocomplete="off">
+                  <span class="set-unit" aria-hidden="true">reps</span>
+                </div>
+                <label class="set-check" for="c-${target.lift}-${s}">
+                  <input id="c-${target.lift}-${s}" name="check-${target.lift}-${s}" type="checkbox"
+                    data-lift="${target.lift}" data-field="check" data-set="${s}"
+                    ${checks[s] ? "checked" : ""} ${disabled}
+                    aria-describedby="set-name-${target.lift}-${s}">
+                  <span>I did it</span>
+                </label>
+              </div>
+            </li>`;
+        }).join("")}
+      </ol>
+    </fieldset>
+  `;
+}
+
+function syncWeightDisplay(root, lift, rawWeight) {
+  const card = root.querySelector(`.card[data-lift="${lift}"]`);
+  if (!card || !store) return;
+  const prescribed = store.progress[lift].nextWeight;
+  const parsed = rawWeight === "" || rawWeight == null ? null : Number(rawWeight);
+  const shown = parsed == null || !Number.isFinite(parsed) ? prescribed : parsed;
+  const rx = card.querySelector(".rx-weight");
+  if (rx) {
+    rx.innerHTML = `${escapeHtml(formatWeight(shown))} <span class="unit">LB</span>`;
+    rx.setAttribute("aria-label", `Working weight ${formatWeight(shown)} pounds`);
+  }
+  card.querySelectorAll(`input[data-field="weight"]`).forEach((el) => {
+    if (document.activeElement !== el) el.value = rawWeight ?? "";
+  });
+  const settings = store.settings;
+  const plates = shown == null ? null : platePlan(shown, settings.barWeightLbs, settings.plates);
+  const plateEl = card.querySelector(".plates");
+  if (plateEl && plates) {
+    plateEl.textContent = formatPlatePlanPlain(plates, settings.barWeightLbs);
+    plateEl.classList.toggle("is-flag", !!plates.flagged);
+  }
+  let help = card.querySelector(".rx-prescribed");
+  if (shown != null && prescribed != null && Number(shown) !== prescribed) {
+    if (!help) {
+      help = document.createElement("p");
+      help.className = "help rx-prescribed";
+      rx?.after(help);
+    }
+    help.textContent = `Prescribed ${formatWeight(prescribed)} lb`;
+  } else if (help) {
+    help.remove();
+  }
+}
+
 function renderWorkout() {
   const draft = store.draft;
   const kind = draft.kind;
@@ -272,50 +375,31 @@ function renderWorkout() {
             const entry = draft.entries[t.lift];
             const prescribed = store.progress[t.lift].nextWeight;
             const complete = !!entry.confirmed;
-            const logged = complete
-              ? { weight: entry.weight, sets: entry.sets.map((r) => r ?? 0) }
-              : null;
+            const workWeight = entry.weight ?? prescribed;
+            const logged = complete ? { weight: entry.weight, sets: entry.sets.map((r) => r ?? 0) } : null;
             const success = logged && isLiftSuccess(logged, t);
             const why = prescriptionWhy(store, t.lift);
-            const wu = prescribed == null ? [] : warmupSets(t.lift, prescribed, settings.barWeightLbs, settings.plates);
-            const plates = prescribed == null ? null : platePlan(prescribed, settings.barWeightLbs, settings.plates);
-            const showOverride = !!entry.overrideOpen && !complete;
-            const displayWeight = complete ? entry.weight : prescribed;
-            const cta = `Done ${t.sets}×${t.reps} @ ${formatWeight(prescribed)}`;
+            const wu = workWeight == null ? [] : warmupSets(t.lift, workWeight, settings.barWeightLbs, settings.plates);
+            const plates = workWeight == null ? null : platePlan(workWeight, settings.barWeightLbs, settings.plates);
+            const checks = setChecksOf(entry, t);
+            const wuChecks = warmupChecksOf(entry, wu.length);
+            const wuOpen = wuChecks.some(Boolean) || openWarmups.has(t.lift);
+            const displayWeight = workWeight;
+            const showPrescribed = displayWeight != null && prescribed != null && displayWeight !== prescribed;
             return `
               <li class="card ${i === focusIdx && !complete ? "is-focus" : ""} ${complete ? "is-filled is-saved" : ""} ${complete && justSavedLift === t.lift ? "just-saved" : ""}" data-lift="${t.lift}">
                 <div class="card-head">
                   <h3>${escapeHtml(LIFTS[t.lift].name)}</h3>
-                  <span class="scheme">${t.sets}×${t.reps}</span>
+                  <span class="scheme">${escapeHtml(formatScheme(t))}</span>
                   ${complete ? `<span class="badge ${success ? "ok" : "miss"}">${success ? "Hit" : "Miss"}</span>` : ""}
                   ${complete ? `<span class="saved-mark">${CHECK_SVG}Saved</span>` : ""}
                 </div>
-                <p class="rx-weight mono" aria-label="Prescribed weight ${formatWeight(displayWeight)} pounds">${formatWeight(displayWeight)} <span class="unit">LB</span></p>
-                ${
-                  complete && entry.weight !== prescribed
-                    ? `<p class="help">Prescribed ${formatWeight(prescribed)} lb</p>`
-                    : ""
-                }
+                <p class="rx-weight mono" aria-label="Working weight ${formatWeight(displayWeight)} pounds">${formatWeight(displayWeight)} <span class="unit">LB</span></p>
+                ${showPrescribed ? `<p class="help rx-prescribed">Prescribed ${formatWeight(prescribed)} lb</p>` : ""}
                 <p class="why">${escapeHtml(why)}</p>
-                ${
-                  wu.length
-                    ? `<p class="wu mono"><span class="wu-label">WU</span> ${wu.map((s) => `${formatWeight(s.weight)}×${s.reps}`).join("  ")}</p>`
-                    : ""
-                }
-                ${plates ? `<p class="plates ${plates.flagged ? "is-flag" : ""}">${escapeHtml(formatPlatePlan(plates))}</p>` : ""}
-                ${
-                  complete
-                    ? `<div class="saved-row">
-                        <p class="help">Logged ${formatWeight(entry.weight)} lb · ${entry.sets.join("/")}</p>
-                        <button type="button" class="btn-outline btn-compact" data-action="edit-lift" data-lift="${t.lift}" aria-label="Edit ${escapeAttr(LIFTS[t.lift].name)}">Edit</button>
-                      </div>`
-                    : showOverride
-                      ? renderOverride(t, entry)
-                      : `<div class="actions">
-                          <button type="button" class="btn-solid" data-action="done" data-lift="${t.lift}">${escapeHtml(cta)}</button>
-                          <button type="button" class="btn-outline" data-action="override" data-lift="${t.lift}">Log a different result</button>
-                        </div>`
-                }
+                ${plates ? `<p class="plates ${plates.flagged ? "is-flag" : ""}">${escapeHtml(formatPlatePlanPlain(plates, settings.barWeightLbs))}</p>` : ""}
+                ${wu.length ? renderWarmup(t, wu, wuChecks, wuOpen) : ""}
+                ${renderWorkSets(t, entry, checks, displayWeight, false)}
                 <div class="field">
                   <label for="n-${t.lift}">Notes <span class="optional">(optional)</span></label>
                   <input id="n-${t.lift}" name="notes-${t.lift}" type="text" enterkeyhint="done"
@@ -345,15 +429,23 @@ function renderLocked(session) {
           .map((l) => {
             const target = WORKOUTS[session.kind].find((t) => t.lift === l.lift);
             const ok = isLiftSuccess(l, target);
+            const entry = { weight: l.weight, sets: l.sets, notes: l.notes ?? "", confirmed: true };
+            const checks = setChecksOf(entry, target);
+            const settings = store.settings;
+            const plates = platePlan(l.weight, settings.barWeightLbs, settings.plates);
+            const showPrescribed = l.prescribedWeight != null && l.prescribedWeight !== l.weight;
             return `
               <li class="card is-locked" data-lift="${l.lift}" aria-readonly="true">
                 <div class="card-head">
                   <h3>${escapeHtml(LIFTS[l.lift].name)}</h3>
-                  <span class="scheme">${target.sets}×${target.reps}</span>
+                  <span class="scheme">${escapeHtml(formatScheme(target))}</span>
                   <span class="badge ${ok ? "ok" : "miss"}">${ok ? "Hit" : "Miss"}</span>
                 </div>
-                <p class="rx-weight mono">${formatWeight(l.weight)} <span class="unit">LB</span></p>
-                <p class="help">Logged ${formatWeight(l.weight)} lb · ${l.sets.join("/")}${l.notes ? ` · ${escapeHtml(l.notes)}` : ""}</p>
+                <p class="rx-weight mono" aria-label="Logged weight ${formatWeight(l.weight)} pounds">${formatWeight(l.weight)} <span class="unit">LB</span></p>
+                ${showPrescribed ? `<p class="help rx-prescribed">Prescribed ${formatWeight(l.prescribedWeight)} lb</p>` : ""}
+                <p class="help">Logged ${escapeHtml(formatSetsAtWeight(l.sets, l.weight))}${l.notes ? ` · ${escapeHtml(l.notes)}` : ""}</p>
+                ${plates ? `<p class="plates ${plates.flagged ? "is-flag" : ""}">${escapeHtml(formatPlatePlanPlain(plates, settings.barWeightLbs))}</p>` : ""}
+                ${renderWorkSets(target, entry, checks, l.weight, true)}
               </li>`;
           })
           .join("")}
@@ -361,38 +453,6 @@ function renderLocked(session) {
       <p class="tip">Saved workouts are final. Next up is Workout ${nextKind}.</p>
       <button type="button" class="btn-outline btn-wide" data-action="open-next">Open Workout ${nextKind}</button>
     </section>
-  `;
-}
-
-function renderOverride(target, entry) {
-  const weight = entry.weight ?? store.progress[target.lift].nextWeight ?? "";
-  return `
-    <div class="override">
-      <div class="field">
-        <label for="w-${target.lift}">Weight (lb)</label>
-        <input id="w-${target.lift}" name="weight-${target.lift}" type="number" inputmode="decimal" step="0.5" min="0" enterkeyhint="next"
-          value="${weight ?? ""}" data-lift="${target.lift}" data-field="weight" />
-      </div>
-      <fieldset class="sets">
-        <legend>Reps per set</legend>
-        <div class="set-grid" style="--cols: ${target.sets}">
-          ${Array.from({ length: target.sets }, (_, s) => {
-            const v = entry.sets[s];
-            const shown = v === null || v === undefined ? target.reps : v;
-            return `
-              <div class="set">
-                <label for="s-${target.lift}-${s}">Set ${s + 1}</label>
-                <input id="s-${target.lift}-${s}" name="set-${target.lift}-${s}" type="number" inputmode="numeric" min="0" max="20" step="1" enterkeyhint="next"
-                  value="${shown}" data-lift="${target.lift}" data-field="set" data-set="${s}" />
-              </div>`;
-          }).join("")}
-        </div>
-      </fieldset>
-      <div class="actions">
-        <button type="button" class="btn-solid" data-action="confirm-override" data-lift="${target.lift}">Save this lift</button>
-        <button type="button" class="btn-outline" data-action="cancel-override" data-lift="${target.lift}">Back</button>
-      </div>
-    </div>
   `;
 }
 
@@ -515,13 +575,15 @@ function bind(root) {
   });
 
   root.querySelectorAll("input[data-lift]").forEach((input) => {
+    const field = input.dataset.field;
+    if (field === "check" || field === "warmup-check") return;
     const sync = () => {
       store = ensureDraft(store);
       const entry = store.draft.entries[input.dataset.lift];
-      const field = input.dataset.field;
       if (field === "weight") {
         const v = input.value.trim();
         entry.weight = v === "" ? null : Number(v);
+        syncWeightDisplay(root, input.dataset.lift, v);
       } else if (field === "set") {
         const idx = Number(input.dataset.set);
         const v = input.value.trim();
@@ -534,6 +596,79 @@ function bind(root) {
     };
     input.addEventListener("input", sync);
     input.addEventListener("change", sync);
+    if (field === "set") {
+      input.addEventListener("blur", () => {
+        if (input.disabled) return;
+        if (input.value.trim() !== "") return;
+        store = ensureDraft(store);
+        const lift = input.dataset.lift;
+        const target = WORKOUTS[store.draft.kind].find((t) => t.lift === lift);
+        const idx = Number(input.dataset.set);
+        const entry = store.draft.entries[lift];
+        input.value = String(target.reps);
+        entry.sets[idx] = target.reps;
+        store = { ...store, draft: store.draft };
+        persistDraftSoon();
+      });
+    }
+  });
+
+  root.querySelectorAll('input[data-field="check"]').forEach((input) => {
+    input.addEventListener("change", async () => {
+      if (input.disabled) return;
+      const lift = input.dataset.lift;
+      const idx = Number(input.dataset.set);
+      store = ensureDraft(store);
+      const target = WORKOUTS[store.draft.kind].find((t) => t.lift === lift);
+      const prescribed = store.progress[lift].nextWeight;
+      const wasConfirmed = !!store.draft.entries[lift].confirmed;
+      const next = applySetCheck(store.draft.entries[lift], target, prescribed, idx, input.checked);
+      if (input.checked && (next.weight === null || !Number.isFinite(next.weight) || next.weight <= 0)) {
+        input.checked = false;
+        setStatus(`Enter a weight for ${LIFTS[lift].name}.`);
+        render(root);
+        root.querySelector(`#w-${lift}-${idx}`)?.focus();
+        return;
+      }
+      store.draft.entries[lift] = { ...next, prescribedWeight: prescribed };
+      try {
+        if (store.draft.entries[lift].confirmed && !wasConfirmed) {
+          await persistDraft();
+          markSaved(root, lift);
+        } else {
+          await persistDraft();
+          if (!store.draft.entries[lift].confirmed) setStatus("");
+          render(root);
+        }
+      } catch (err) {
+        setStatus(err.message);
+        render(root);
+      }
+    });
+  });
+
+  root.querySelectorAll('input[data-field="warmup-check"]').forEach((input) => {
+    input.addEventListener("change", () => {
+      store = ensureDraft(store);
+      const lift = input.dataset.lift;
+      const entry = store.draft.entries[lift];
+      const settings = store.settings;
+      const workWeight = entry.weight ?? store.progress[lift].nextWeight;
+      const wu = workWeight == null ? [] : warmupSets(lift, workWeight, settings.barWeightLbs, settings.plates);
+      const checks = warmupChecksOf(entry, wu.length);
+      checks[Number(input.dataset.set)] = input.checked;
+      entry.warmupChecked = checks;
+      store = { ...store, draft: store.draft };
+      persistDraftSoon();
+    });
+  });
+
+  root.querySelectorAll("details.wu-block").forEach((el) => {
+    el.addEventListener("toggle", () => {
+      const lift = el.dataset.lift;
+      if (el.open) openWarmups.add(lift);
+      else openWarmups.delete(lift);
+    });
   });
 
   root.querySelector('[data-action="save-start"]')?.addEventListener("click", async () => {
@@ -578,131 +713,12 @@ function bind(root) {
     }
   });
 
-  root.querySelectorAll('[data-action="done"]').forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const lift = btn.dataset.lift;
-      store = ensureDraft(store);
-      const target = WORKOUTS[store.draft.kind].find((t) => t.lift === lift);
-      const prescribed = store.progress[lift].nextWeight;
-      const done = doneAsPrescribed(target, prescribed);
-      const entry = store.draft.entries[lift];
-      store.draft.entries[lift] = {
-        ...entry,
-        weight: done.weight,
-        sets: done.sets,
-        confirmed: true,
-        overrideOpen: false,
-        prescribedWeight: prescribed,
-      };
-      try {
-        await persistDraft();
-        markSaved(root, lift);
-      } catch (err) {
-        setStatus(err.message);
-        render(root);
-      }
-    });
-  });
-
-  root.querySelectorAll('[data-action="edit-lift"]').forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const lift = btn.dataset.lift;
-      if (lockedSession) return;
-      store = ensureDraft(store);
-      const target = WORKOUTS[store.draft.kind].find((t) => t.lift === lift);
-      store.draft.entries[lift] = reopenDraftLift(store.draft.entries[lift], target);
-      justSavedLift = null;
-      try {
-        await persistDraft();
-        setStatus("");
-        render(root);
-        root.querySelector(`#w-${lift}`)?.focus();
-      } catch (err) {
-        setStatus(err.message);
-        render(root);
-      }
-    });
-  });
-
   root.querySelector('[data-action="open-next"]')?.addEventListener("click", () => {
     lockedSession = null;
     justSavedLift = null;
     setStatus("");
     render(root);
     window.scrollTo({ top: 0 });
-  });
-
-  root.querySelectorAll('[data-action="override"]').forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const lift = btn.dataset.lift;
-      store = ensureDraft(store);
-      const target = WORKOUTS[store.draft.kind].find((t) => t.lift === lift);
-      const entry = store.draft.entries[lift];
-      const prescribed = store.progress[lift].nextWeight;
-      store.draft.entries[lift] = {
-        ...entry,
-        weight: entry.weight ?? prescribed,
-        sets: entry.sets.map((r) => (r === null || r === undefined ? target.reps : r)),
-        overrideOpen: true,
-      };
-      try {
-        await persistDraft();
-        render(root);
-        root.querySelector(`#w-${lift}`)?.focus();
-      } catch (err) {
-        setStatus(err.message);
-        render(root);
-      }
-    });
-  });
-
-  root.querySelectorAll('[data-action="cancel-override"]').forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const lift = btn.dataset.lift;
-      store = ensureDraft(store);
-      const entry = store.draft.entries[lift];
-      entry.overrideOpen = false;
-      // Backing out of an edit puts the lift back to its saved state.
-      if (entry.edited) {
-        entry.confirmed = true;
-        entry.edited = false;
-      }
-      try {
-        await persistDraft();
-        render(root);
-      } catch (err) {
-        setStatus(err.message);
-        render(root);
-      }
-    });
-  });
-
-  root.querySelectorAll('[data-action="confirm-override"]').forEach((btn) => {
-    btn.addEventListener("click", async () => {
-      const lift = btn.dataset.lift;
-      store = ensureDraft(store);
-      const target = WORKOUTS[store.draft.kind].find((t) => t.lift === lift);
-      const prescribed = store.progress[lift].nextWeight;
-      const entry = confirmDraftLift(store.draft.entries[lift], target, prescribed);
-      if (entry.weight === null || !Number.isFinite(entry.weight) || entry.weight <= 0) {
-        setStatus(`Enter a weight for ${LIFTS[lift].name}.`);
-        render(root);
-        return;
-      }
-      if (entry.sets.some((r) => r === null || r === undefined || !Number.isFinite(r))) {
-        setStatus(`Log reps for every set of ${LIFTS[lift].name}.`);
-        render(root);
-        return;
-      }
-      store.draft.entries[lift] = { ...entry, edited: false, prescribedWeight: prescribed };
-      try {
-        await persistDraft();
-        markSaved(root, lift);
-      } catch (err) {
-        setStatus(err.message);
-        render(root);
-      }
-    });
   });
 
   root.querySelector('[data-action="complete"]')?.addEventListener("click", async () => {
@@ -814,7 +830,7 @@ function bind(root) {
 
 function markSaved(root, lift) {
   justSavedLift = lift;
-  setStatus(`${LIFTS[lift].name} saved. Tap Edit to change it.`, "ok");
+  setStatus(`${LIFTS[lift].name} saved. You can still change it until you save the workout.`, "ok");
   render(root);
   // The outline animates in once; later renders show it static.
   window.setTimeout(() => {

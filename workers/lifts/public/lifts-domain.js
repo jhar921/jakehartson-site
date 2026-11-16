@@ -244,7 +244,7 @@ export function prescriptionWhy(store, liftId) {
   }
   const success = isLiftSuccess(found.entry, found.target);
   const failures = store.progress[liftId]?.consecutiveFailures ?? 0;
-  if (success) return `Last time ${found.entry.sets.join("/")} at ${formatLbs(found.entry.weight)}`;
+  if (success) return `Last time: ${formatSetsAtWeight(found.entry.sets, found.entry.weight)}`;
   if (failures === 0) return "Deload after 3 misses";
   return failures === 1 ? "Repeat, 1 miss in a row" : `Repeat, ${failures} misses in a row`;
 }
@@ -272,6 +272,71 @@ export function confirmDraftLift(entry, target, prescribedWeight) {
     confirmed: true,
     overrideOpen: false,
   };
+}
+
+
+export function formatSetsAtWeight(sets, weight) {
+  if (!Array.isArray(sets) || sets.length === 0 || weight === null || weight === undefined) return "";
+  const allSame = sets.every((r) => r === sets[0]);
+  if (allSame) {
+    const n = sets.length;
+    const r = sets[0];
+    const setWord = n === 1 ? "set" : "sets";
+    return `${n} ${setWord} of ${r} at ${formatLbs(weight)} lb`;
+  }
+  return `${sets.join(", ")} reps at ${formatLbs(weight)} lb`;
+}
+
+export function formatScheme(target) {
+  const setWord = target.sets === 1 ? "set" : "sets";
+  return `${target.sets} ${setWord} of ${target.reps}`;
+}
+
+export function formatPlatePlanPlain(plan, bar = DEFAULT_BAR_LBS) {
+  const barText = `The bar is ${formatLbs(bar)} lb.`;
+  if (!plan || plan.weight === null) return "Cannot load this weight with the current bar and plates.";
+  if (plan.eachSide.length === 0) return `Empty bar. ${barText}`;
+  const plates = plan.eachSide.flatMap((p) => Array.from({ length: p.count }, () => formatLbs(p.plate)));
+  const line = `Plates on each side: ${plates.join(" + ")}.`;
+  if (plan.flagged) return `Nearest loadable weight is ${formatLbs(plan.weight)} lb. ${line} ${barText}`;
+  return `${line} ${barText}`;
+}
+
+export function setChecksOf(entry, target) {
+  const n = target.sets;
+  if (entry?.confirmed) return Array.from({ length: n }, () => true);
+  if (
+    Array.isArray(entry?.checked) &&
+    entry.checked.length === n &&
+    entry.checked.every((c) => typeof c === "boolean")
+  ) {
+    return entry.checked.slice();
+  }
+  return Array.from({ length: n }, () => false);
+}
+
+export function warmupChecksOf(entry, count) {
+  if (
+    Array.isArray(entry?.warmupChecked) &&
+    entry.warmupChecked.length === count &&
+    entry.warmupChecked.every((c) => typeof c === "boolean")
+  ) {
+    return entry.warmupChecked.slice();
+  }
+  return Array.from({ length: count }, () => false);
+}
+
+/** Check or uncheck one working set. Checking the last set confirms the lift. */
+export function applySetCheck(entry, target, prescribedWeight, index, didIt) {
+  const checks = setChecksOf(entry, target);
+  checks[index] = !!didIt;
+  const sets = entry.sets.map((r, i) => {
+    if (i === index && didIt && (r === null || r === undefined)) return target.reps;
+    return r;
+  });
+  const next = { ...entry, sets, checked: checks };
+  if (checks.every(Boolean)) return confirmDraftLift(next, target, prescribedWeight);
+  return { ...next, confirmed: false };
 }
 
 function ticks(lbs) {

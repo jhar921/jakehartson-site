@@ -11,7 +11,11 @@ import {
   draftToEntries,
   ensureDraft,
   firstIncompleteLiftIndex,
+  applySetCheck,
   formatPlatePlan,
+  formatPlatePlanPlain,
+  formatScheme,
+  formatSetsAtWeight,
   importJson,
   isLoadable,
   isValidDraft,
@@ -26,6 +30,7 @@ import {
   prescriptionWhy,
   renderVaultNote,
   roundToPlate,
+  setChecksOf,
   uniqueVaultFilename,
   warmupSets,
 } from "../public/lifts-domain.js";
@@ -242,7 +247,7 @@ let guided = applyStartingWeights(createEmptyStore(), {
   squat: 135, bench: 95, row: 95, ohp: 65, deadlift: 185,
 }).store;
 guided = applyCompletedWorkout(guided, "A", A(135, 95, 95));
-assert(prescriptionWhy(guided, "squat") === "Last time 5/5/5/5/5 at 135", "success why-line");
+assert(prescriptionWhy(guided, "squat") === "Last time: 5 sets of 5 at 135 lb", "success why-line");
 assert(guided.progress.squat.nextWeight === 140, "done as prescribed then +5");
 
 const doneSq = doneAsPrescribed(WORKOUTS.A[0], 140);
@@ -342,4 +347,53 @@ assert(uniqueVaultFilename("2026-11-11 A workout.md", new Set(["2026-11-11 A wor
   assert(isValidDraft({ kind: "A", entries: { ...server.draft.entries, row: reopened } }), "reopened lift is a valid draft");
 }
 
-console.log(`ok: ${passed} assertions (rotation, increments, 2.5 lb deload rounding, import/draft validation, warmup, plates, prescription, v1 migrate, vault note)`);
+// Plain-language card copy and per-set check helpers (2026-11-16)
+assert(formatSetsAtWeight(five, 185) === "5 sets of 5 at 185 lb", "uniform last-time wording");
+assert(formatSetsAtWeight([5], 205) === "1 set of 5 at 205 lb", "single-set wording");
+assert(formatSetsAtWeight([5, 5, 5, 5, 4], 190) === "5, 5, 5, 5, 4 reps at 190 lb", "mixed-rep last-time wording");
+assert(formatScheme(WORKOUTS.A[0]) === "5 sets of 5", "squat scheme wording");
+assert(formatScheme(WORKOUTS.B[2]) === "1 set of 5", "deadlift scheme wording");
+const plates190 = formatPlatePlanPlain(platePlan(190), 45);
+assert(plates190 === "Plates on each side: 45 + 25 + 2.5. The bar is 45 lb.", `190 plate wording (got ${plates190})`);
+const plates225 = formatPlatePlanPlain(platePlan(225), 45);
+assert(plates225 === "Plates on each side: 45 + 45. The bar is 45 lb.", `225 plate wording (got ${plates225})`);
+assert(formatPlatePlanPlain(platePlan(45), 45) === "Empty bar. The bar is 45 lb.", "empty bar wording");
+assert(formatPlatePlan(platePlan(225)) === "2 x 45 each side", "legacy plate copy unchanged");
+
+const squatTarget = WORKOUTS.A[0];
+const emptySq = { weight: 190, sets: [null, null, null, null, null], notes: "", confirmed: false };
+assert(setChecksOf(emptySq, squatTarget).join() === "false,false,false,false,false", "fresh lift has no checks");
+let mid = applySetCheck(emptySq, squatTarget, 190, 0, true);
+mid = applySetCheck(mid, squatTarget, 190, 2, true);
+assert(mid.sets[0] === 5 && mid.sets[2] === 5 && mid.sets[1] === null, "checking a set fills prescribed reps only on that set");
+assert(mid.confirmed === false && mid.checked.filter(Boolean).length === 2, "partial checks do not confirm the lift");
+mid = applySetCheck({ ...mid, sets: [5, 5, 4, null, null] }, squatTarget, 190, 1, true);
+// set 1 already had 5; edit set 2 to 4 then check remaining
+mid = applySetCheck(mid, squatTarget, 190, 2, true);
+mid = applySetCheck(mid, squatTarget, 190, 3, true);
+mid = applySetCheck(mid, squatTarget, 190, 4, true);
+assert(mid.confirmed === true && mid.sets.join() === "5,5,4,5,5", "checking the last set confirms and keeps the edited reps");
+const parsedMiss = draftToEntries("A", {
+  kind: "A",
+  entries: {
+    squat: mid,
+    bench: { weight: 95, sets: five, notes: "", confirmed: true },
+    row: { weight: 95, sets: five, notes: "", confirmed: true },
+  },
+}, { squat: { nextWeight: 190 }, bench: { nextWeight: 95 }, row: { nextWeight: 95 } });
+assert(parsedMiss.ok && parsedMiss.lifts[0].weight === 190 && parsedMiss.lifts[0].sets.join() === "5,5,4,5,5", "edited set reps save in the workout payload");
+const unchecked = applySetCheck(mid, squatTarget, 190, 2, false);
+assert(unchecked.confirmed === false && unchecked.checked[2] === false, "unchecking a set unconfirms the lift");
+assert(
+  isValidDraft({
+    kind: "A",
+    entries: {
+      squat: { weight: 190, sets: five, notes: "", confirmed: true, checked: [true, true, true, true, true], warmupChecked: [true, false] },
+      bench: { weight: 95, sets: five, notes: "", confirmed: false },
+      row: { weight: 95, sets: [null, null, null, null, null], notes: "" },
+    },
+  }),
+  "draft with check arrays remains valid",
+);
+
+console.log(`ok: ${passed} assertions (rotation, increments, 2.5 lb deload rounding, import/draft validation, warmup, plates, prescription, v1 migrate, vault note, card wording, set checks)`);
