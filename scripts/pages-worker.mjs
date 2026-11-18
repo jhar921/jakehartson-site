@@ -3,6 +3,8 @@
 //
 // The worker mimics Pages static serving, plus:
 // - www.jakehartson.com -> https://jakehartson.com (301, path and query kept)
+// - /connect and /connect/ -> Google Calendar virtual-connect booking (302)
+// - /coffee and /coffee/ -> Google Calendar in-person coffee booking (302)
 // - /card -> /card/ (301)
 // - unknown paths -> /404.html with status 404
 // - POST /api/contact -> CONTACT service binding (jakehartson-contact Worker)
@@ -53,6 +55,9 @@ export default { async fetch(req, env) {
   if (url.hostname === 'www.' + APEX) return redirect('https://' + APEX + url.pathname + url.search, 301);
   let p;
   try { p = decodeURIComponent(url.pathname); } catch { return serve('/404.html', 404); }
+  const SHORT = { '/connect': 'https://calendar.app.google/iYJ18F4uKcsZ5igz5', '/coffee': 'https://calendar.app.google/BHEVu48Uz65ki2Yj6' };
+  const shortKey = p.length > 1 && p.endsWith('/') ? p.slice(0, -1) : p;
+  if (SHORT[shortKey]) return redirect(SHORT[shortKey], 302);
   if (p === '/api/contact') {
     if (req.method !== 'POST') return json({ ok: false, error: 'method' }, 405);
     if (!env || !env.CONTACT) return json({ ok: false, error: 'unavailable' }, 503);
