@@ -39,7 +39,7 @@ Output goes to `dist/`.
 Cloudflare Pages, project `jakehartson-site`, by direct upload (not Git-connected).
 
 - Build command: `npm run build` (output in `dist/`)
-- Bundle: `node scripts/pages-worker.mjs dist` writes `_worker.js`, which serves every file in `dist/`, applies `public/_headers`, returns `/404.html` with status 404, 301s `/card` to `/card/`, and 301s `www.jakehartson.com` to the apex
+- Bundle: `node scripts/pages-worker.mjs dist` writes `_worker.js`, which serves every file in `dist/`, applies `public/_headers`, returns `/404.html` with status 404, 302s `/connect` and `/coffee` (and their trailing slashes) to Jake's Google Calendar booking links, 301s `/card` to `/card/`, and 301s `www.jakehartson.com` to the apex
 - Upload `_worker.js` as a Pages deployment. Branch `main` is production; any other branch name gives a preview at `https://<branch>.jakehartson-site.pages.dev`
 - Custom domains: `jakehartson.com` and `www.jakehartson.com` (the zone also has a Redirect Rule for www, see `docs/cloudflare.md`)
 - Contact form: `POST /api/contact` goes through the `CONTACT` service binding to the `jakehartson-contact` Worker (`workers/contact/`), which checks Turnstile and emails jake@jakehartson.com

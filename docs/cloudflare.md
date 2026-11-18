@@ -8,6 +8,7 @@ read by anything; `public/_headers` carries its vCard headers for Pages.
 
 - `dist/404.html` is served with HTTP 404 for any path with no matching file.
 - `dist/card/index.html` is served at `/card/`; `/card` gets a 301 to `/card/`.
+- The Pages worker 302s `/connect` and `/connect/` to the virtual-connect Calendar link, and `/coffee` and `/coffee/` to the in-person coffee Calendar link. These are temporary redirects so the targets can change later.
 - `dist/_headers` sets the vCard content type and filename.
 
 ## www to apex (needs a zone rule, not code)
