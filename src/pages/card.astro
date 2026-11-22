@@ -5,6 +5,7 @@ import heroPhoto from '../assets/jake-hero.jpg';
 
 const siteUrl = 'https://jakehartson.com';
 const title = 'Jake Hartson';
+const documentTitle = 'Contact card · Jake Hartson';
 const description = 'Strategist and operator. Orange County.';
 // Cloudflare Pages serves card/index.html at /card/ (and 308s /card to it),
 // so the canonical must carry the trailing slash.
@@ -18,7 +19,7 @@ const ogImage = `${siteUrl}/og-image.jpg`;
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="generator" content={Astro.generator} />
 
-    <title>{title}</title>
+    <title>{documentTitle}</title>
     <meta name="description" content={description} />
     <link rel="canonical" href={cardUrl} />
 
@@ -52,7 +53,7 @@ const ogImage = `${siteUrl}/og-image.jpg`;
           alt="Jake Hartson"
           width={160}
           height={192}
-          densities={[1, 2]}
+          densities={[1, 2, 3]}
           loading="eager"
           fetchpriority="high"
           class="h-48 w-40 rounded-xl object-cover object-top"
