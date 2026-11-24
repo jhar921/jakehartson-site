@@ -436,6 +436,15 @@ button.fill:focus-visible,
 }
 .btn-solid:active { background: var(--hud-t3); border-color: var(--hud-t3); }
 
+a.btn-solid {
+  text-decoration: none;
+  color: var(--hud-on-ink);
+  box-sizing: border-box;
+  cursor: pointer;
+}
+a.btn-solid:visited { color: var(--hud-on-ink); }
+.signin-wrap { margin-top: 22px; }
+
 .btn-outline {
   min-height: 52px;
   min-width: 44px;

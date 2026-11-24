@@ -22,6 +22,7 @@ import {
   warmupChecksOf,
   warmupSets,
 } from "./lifts-domain.js";
+import { accessLoginUrl, isAccessBlocked, isAccessError } from "./lifts-access.js";
 
 const THEME_KEY = "lifts-theme";
 
@@ -113,12 +114,20 @@ function themeToggleMarkup() {
 
 async function api(path, options = {}) {
   const res = await fetch(path, {
+    credentials: "same-origin",
     ...options,
+    redirect: "manual",
     headers: {
       ...(options.body ? { "content-type": "application/json" } : {}),
       ...(options.headers || {}),
     },
   });
+  if (isAccessBlocked(res)) {
+    const err = new Error("Access required");
+    err.status = res.status === 403 ? 403 : 401;
+    err.access = true;
+    throw err;
+  }
   const text = await res.text();
   let data = null;
   try {
@@ -170,12 +179,17 @@ function peekLocalBackup() {
 
 function render(root) {
   if (bootError) {
+    const loginHref = escapeAttr(accessLoginUrl());
     root.innerHTML = `
       <div class="shell">
         <header class="top">
           <div class="brand">LIFTS <span class="mark">5×5</span></div>
         </header>
         <p class="status" role="alert">${escapeHtml(bootError)}</p>
+        <p class="help">Your Access session has expired or is missing. Sign in, then you will return here.</p>
+        <p class="signin-wrap">
+          <a class="btn-solid" href="${loginHref}">Sign in</a>
+        </p>
       </div>`;
     return;
   }
@@ -861,7 +875,7 @@ export async function mountLiftsTracker(root) {
     store = ensureDraft(store);
     render(root);
   } catch (err) {
-    bootError = err.status === 401 || err.status === 403 ? "Access required." : "Cannot reach the server store.";
+    bootError = isAccessError(err) ? "Access required." : "Cannot reach the server store.";
     render(root);
   }
 }

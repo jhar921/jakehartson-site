@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "wrangler dev --local --port 8788",
     "preview": "python3 -m http.server 8788 --directory public",
-    "check": "node scripts/test-domain.mjs",
+    "check": "node scripts/test-domain.mjs && node scripts/test-access.mjs",
     "check:api": "node scripts/test-api.mjs"
   },
   "devDependencies": {
