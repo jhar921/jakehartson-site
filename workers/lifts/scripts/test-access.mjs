@@ -25,8 +25,9 @@ assert(isAccessError({ message: "Failed to fetch" }) === false, "plain TypeError
 
 const href = accessLoginUrl({ origin: "https://lifts.jakehartson.com", host: "lifts.jakehartson.com" });
 const url = new URL(href);
+assert(href === "https://lifts.jakehartson.com/", "Sign in href is the app root");
 assert(url.origin === "https://lifts.jakehartson.com", "login URL stays on the app origin");
-assert(url.pathname === "/cdn-cgi/access/login/lifts.jakehartson.com", "login path uses the app host");
-assert(url.searchParams.get("redirect_url") === "https://lifts.jakehartson.com/", "redirect_url returns to the app root");
+assert(url.pathname === "/", "login path is the app root, not the Access login path");
+assert(url.search === "", "app root href has no query");
 
 console.log(`ok: ${passed} access sign-in checks passed`);

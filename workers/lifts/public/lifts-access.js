@@ -1,6 +1,7 @@
 /**
- * Detect Cloudflare Access blocks and build a same-origin login URL.
- * Top-level navigation to this URL can complete the login; fetch cannot.
+ * Detect Cloudflare Access blocks and build the Sign in href.
+ * A top-level document navigation to the app root lets the browser
+ * follow Access's 302 to the team-domain login; fetch cannot.
  */
 export function isAccessBlocked(res) {
   if (!res) return false;
@@ -17,11 +18,7 @@ export function isAccessError(err) {
   return err.status === 401 || err.status === 403;
 }
 
-/** Same-origin Access login that returns to the app after sign-in. */
+/** App root. Use as an <a href> so login is a full document navigation. */
 export function accessLoginUrl(loc = globalThis.location) {
-  const origin = loc.origin;
-  const host = loc.host;
-  const login = new URL(`/cdn-cgi/access/login/${host}`, origin);
-  login.searchParams.set("redirect_url", `${origin}/`);
-  return login.href;
+  return new URL("/", loc.origin).href;
 }
