@@ -7,7 +7,7 @@ trademarks.
 Today is a prescription: weight, sets x reps, warmup, and plates. One tap logs the
 prescription. A second control opens an override. Workouts are stored in D1 behind
 Cloudflare Access. If the Access session is missing, the app shows a Sign in link
-that does a top-level navigation to `/cdn-cgi/access/login` and returns here.
+that does a top-level navigation to `/` so the browser can follow Access's 302 and return here.
 Export / Import JSON remains the backup path and still accepts
 version 1 files.
 
