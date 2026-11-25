@@ -1,0 +1,23 @@
+# lifts.jakehartson.com — personal StrongLifts 5x5 guide (Worker + D1).
+# Live behind Cloudflare Access. Keep workers_dev/preview_urls off so Access can't be bypassed.
+# Remote D1 `lifts-coach` (f9aac2da-2a38-4aa5-9902-006836cc68a9); migrations applied 2026-11-11.
+# Do not put LIFTS_DEV_BYPASS_ACCESS, ACCESS_AUD, ACCESS_TEAM_DOMAIN, or ACCESS_SERVICE_AUD here.
+name = "lifts"
+main = "src/worker.js"
+compatibility_date = "2026-10-01"
+workers_dev = false
+preview_urls = false
+
+[assets]
+directory = "./public"
+binding = "ASSETS"
+html_handling = "auto-trailing-slash"
+not_found_handling = "404-page"
+# Run the Worker for every request so security/noindex headers attach to assets too.
+run_worker_first = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "lifts-coach"
+database_id = "f9aac2da-2a38-4aa5-9902-006836cc68a9"
+migrations_dir = "migrations"
